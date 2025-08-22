@@ -64,3 +64,5 @@ def create_app():
         return HTMLResponse(
             content="<html><h1>Haa shit! My Code is working.</h1></html>"
         )
+
+    return app

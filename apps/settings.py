@@ -15,6 +15,13 @@ class CoreSettings(BaseSettings):
     DATABASE_PASSWORD: str
     DATABASE_NAME: str
 
+    PHONEPE_CLIENT_ID: str
+    PHONEPE_CLIENT_SECRET: str
+    PHONEPE_PAYMENT_EXPIRY_SECONDS: int
+
+    BACKEND_DOMAIN: str
+    FRONTEND_DOMAIN: str
+
     @property
     def cors_origins(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, str):

@@ -5,7 +5,7 @@ from enum import Enum
 import aiohttp
 from pydantic import BaseModel, Field
 import logging
-from apps.registry import settings
+from apps.settings import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
