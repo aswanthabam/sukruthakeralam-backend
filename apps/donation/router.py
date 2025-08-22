@@ -40,3 +40,11 @@ async def get_donation_status_endpoint(
         },
         "donation": donation,
     }
+
+
+@router.get("/total_amount")
+async def get_total_donation_amount_endpoint(
+    donation_service: "DonationServiceDependency",
+):
+    total_amount = await donation_service.total_donation_amount()
+    return {"total_donation_amount": total_amount}

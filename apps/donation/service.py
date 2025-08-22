@@ -2,7 +2,7 @@ import base64
 from datetime import datetime
 import hashlib
 import json
-from sqlalchemy import select
+from sqlalchemy import func, select
 from typing_extensions import Annotated
 from fastapi.params import Depends
 from cryptography.fernet import Fernet
@@ -176,6 +176,14 @@ class DonationService(AbstractService):
                 "Either donation_id or order_id must be provided."
             )
         return donation
+
+    async def total_donation_amount(self) -> float:
+        total = await self.session.scalar(
+            select(func.sum(Donation.amount)).where(
+                Donation.status == DonationStatus.COMPLETED.value
+            )
+        )
+        return total or 0.0
 
     async def list_donations(
         self,
