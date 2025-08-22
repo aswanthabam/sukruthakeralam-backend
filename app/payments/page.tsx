@@ -1,101 +1,117 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Filter, Download, Eye, Edit, ArrowUpDown } from "lucide-react"
+import { Search, Filter, Download, Eye, Edit, ArrowUpDown, Loader2 } from "lucide-react"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { LogoutButton } from "@/components/logout-button"
+import { axiosInstance } from "@/lib/axios"
 import type { DateRange } from "react-day-picker"
 import Link from "next/link"
 
-// Mock data for payments
-const paymentsData = [
-  {
-    id: 1,
-    name: "Rajesh Kumar",
-    phone: "+91 9876543210",
-    email: "rajesh.kumar@email.com",
-    amount: 2500,
-    status: "Completed",
-    date: "2024-01-15",
-    paymentMethod: "UPI",
-  },
-  {
-    id: 2,
-    name: "Priya Nair",
-    phone: "+91 9876543211",
-    email: "priya.nair@email.com",
-    amount: 1800,
-    status: "Pending",
-    date: "2024-01-14",
-    paymentMethod: "Bank Transfer",
-  },
-  {
-    id: 3,
-    name: "Suresh Menon",
-    phone: "+91 9876543212",
-    email: "suresh.menon@email.com",
-    amount: 3200,
-    status: "Completed",
-    date: "2024-01-13",
-    paymentMethod: "Cash",
-  },
-  {
-    id: 4,
-    name: "Anitha Pillai",
-    phone: "+91 9876543213",
-    email: "anitha.pillai@email.com",
-    amount: 1500,
-    status: "Failed",
-    date: "2024-01-12",
-    paymentMethod: "UPI",
-  },
-  {
-    id: 5,
-    name: "Mohanan K",
-    phone: "+91 9876543214",
-    email: "mohanan.k@email.com",
-    amount: 2200,
-    status: "Completed",
-    date: "2024-01-11",
-    paymentMethod: "Bank Transfer",
-  },
-]
+interface Donation {
+  order_id: string
+  full_name: string
+  email: string
+  amount: number
+  status: string
+  need_g80_certificate: boolean
+  created_at: string
+}
+
+interface DonationsResponse {
+  limit: number
+  offset: number
+  next: string | null
+  previous: string | null
+  items: Donation[]
+}
 
 export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [sortField, setSortField] = useState("date")
+  const [sortField, setSortField] = useState("created_at")
   const [sortDirection, setSortDirection] = useState("desc")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [donations, setDonations] = useState<Donation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    limit: 10,
+    offset: 0,
+    next: null as string | null,
+    previous: null as string | null,
+    total: 0,
+  })
 
-  const filteredPayments = paymentsData
-    .filter((payment) => {
-      const matchesSearch =
-        payment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.phone.includes(searchTerm)
-      const matchesStatus = statusFilter === "all" || payment.status.toLowerCase() === statusFilter
-
-      let matchesDate = true
-      if (dateRange?.from) {
-        const paymentDate = new Date(payment.date)
-        const fromDate = dateRange.from
-        const toDate = dateRange.to || dateRange.from
-        matchesDate = paymentDate >= fromDate && paymentDate <= toDate
+  const fetchDonations = async (offset = 0) => {
+    try {
+      setLoading(true)
+      const params: any = {
+        limit: 10,
+        offset,
       }
 
-      return matchesSearch && matchesStatus && matchesDate
+      // Add date filtering if date range is selected
+      if (dateRange?.from) {
+        const fromDate = new Date(dateRange.from)
+        fromDate.setHours(0, 0, 0, 0)
+        params.from_datetime = fromDate.toISOString()
+
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to)
+          toDate.setHours(23, 59, 59, 999)
+          params.to_datetime = toDate.toISOString()
+        } else {
+          const toDate = new Date(dateRange.from)
+          toDate.setHours(23, 59, 59, 999)
+          params.to_datetime = toDate.toISOString()
+        }
+      }
+
+      const response = await axiosInstance.get<DonationsResponse>("/api/donation/list_donations", { params })
+      setDonations(response.data.items)
+      setPagination({
+        limit: response.data.limit,
+        offset: response.data.offset,
+        next: response.data.next,
+        previous: response.data.previous,
+        total: response.data.items.length,
+      })
+    } catch (error) {
+      console.error("Error fetching donations:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDonations(0)
+  }, [dateRange])
+
+  const filteredDonations = donations
+    .filter((donation) => {
+      const matchesSearch =
+        donation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        donation.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        donation.order_id.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = statusFilter === "all" || donation.status.toLowerCase() === statusFilter
+
+      return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
-      const aValue = a[sortField as keyof typeof a]
-      const bValue = b[sortField as keyof typeof b]
+      const aValue = a[sortField as keyof Donation]
+      const bValue = b[sortField as keyof Donation]
       const direction = sortDirection === "asc" ? 1 : -1
+
+      if (sortField === "amount") {
+        return direction * (Number(aValue) - Number(bValue))
+      }
+
       return aValue > bValue ? direction : -direction
     })
 
@@ -118,6 +134,20 @@ export default function PaymentsPage() {
     } else {
       setSortField(field)
       setSortDirection("asc")
+    }
+  }
+
+  const handlePrevious = () => {
+    if (pagination.previous) {
+      const newOffset = Math.max(0, pagination.offset - pagination.limit)
+      fetchDonations(newOffset)
+    }
+  }
+
+  const handleNext = () => {
+    if (pagination.next) {
+      const newOffset = pagination.offset + pagination.limit
+      fetchDonations(newOffset)
     }
   }
 
@@ -173,7 +203,7 @@ export default function PaymentsPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, email, or phone..."
+                    placeholder="Search by name, email, or order ID..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 w-80"
@@ -195,77 +225,93 @@ export default function PaymentsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("name")}>
-                      <div className="flex items-center gap-2">
-                        Name
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead>Phone Number</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("amount")}>
-                      <div className="flex items-center gap-2">
-                        Amount
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead>Payment Status</TableHead>
-                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("date")}>
-                      <div className="flex items-center gap-2">
-                        Date
-                        <ArrowUpDown className="h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-medium">{payment.name}</TableCell>
-                      <TableCell>{payment.phone}</TableCell>
-                      <TableCell>{payment.email}</TableCell>
-                      <TableCell className="font-semibold">₹{payment.amount.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(payment.status)}>{payment.status}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{payment.paymentMethod}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredPayments.length} of {paymentsData.length} payments
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading payments...</span>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order ID</TableHead>
+                        <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("full_name")}>
+                          <div className="flex items-center gap-2">
+                            Name
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("amount")}>
+                          <div className="flex items-center gap-2">
+                            Amount
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead>Form 80 Required</TableHead>
+                        <TableHead
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("created_at")}
+                        >
+                          <div className="flex items-center gap-2">
+                            Date
+                            <ArrowUpDown className="h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDonations.map((donation) => (
+                        <TableRow key={donation.order_id}>
+                          <TableCell className="font-mono text-sm">{donation.order_id}</TableCell>
+                          <TableCell className="font-medium">{donation.full_name}</TableCell>
+                          <TableCell>{donation.email}</TableCell>
+                          <TableCell className="font-semibold">₹{donation.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(donation.status)}>{donation.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={donation.need_g80_certificate ? "default" : "secondary"}>
+                              {donation.need_g80_certificate ? "Yes" : "No"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{new Date(donation.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {filteredDonations.length} payments (Offset: {pagination.offset})
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handlePrevious} disabled={!pagination.previous}>
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleNext} disabled={!pagination.next}>
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </main>
