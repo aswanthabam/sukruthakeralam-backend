@@ -12,10 +12,20 @@ interface DonationTotalResponse {
   total_donation_amount: number
 }
 
+interface DonationCountResponse {
+  total_donation_count: number
+}
+
+interface Form80RequestsResponse {
+  total_form80_requests: number
+}
+
 export function DashboardContent() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [totalCollected, setTotalCollected] = useState<number>(0)
   const [todayCollected, setTodayCollected] = useState<number>(0)
+  const [totalDonations, setTotalDonations] = useState<number>(0)
+  const [totalForm80Requests, setTotalForm80Requests] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(true)
 
   const getTodayDateRange = () => {
@@ -43,6 +53,36 @@ export function DashboardContent() {
     }
   }
 
+  const fetchDonationCount = async (fromDate?: string, toDate?: string) => {
+    try {
+      const params: any = {}
+      if (fromDate) params.from_datetime = fromDate
+      if (toDate) params.to_datetime = toDate
+
+      const response = await axiosInstance.get<DonationCountResponse>("/api/donation/total_count", { params })
+      return response.data.total_donation_count
+    } catch (error) {
+      console.error("Error fetching donation count:", error)
+      return 0
+    }
+  }
+
+  const fetchForm80Requests = async (fromDate?: string, toDate?: string) => {
+    try {
+      const params: any = {}
+      if (fromDate) params.from_datetime = fromDate
+      if (toDate) params.to_datetime = toDate
+
+      const response = await axiosInstance.get<Form80RequestsResponse>("/api/donation/total_form80_requests", {
+        params,
+      })
+      return response.data.total_form80_requests
+    } catch (error) {
+      console.error("Error fetching form80 requests:", error)
+      return 0
+    }
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
@@ -58,6 +98,12 @@ export function DashboardContent() {
         }
         const total = await fetchTotalAmount(totalParams.from_datetime, totalParams.to_datetime)
         setTotalCollected(total)
+
+        const donationCount = await fetchDonationCount(totalParams.from_datetime, totalParams.to_datetime)
+        setTotalDonations(donationCount)
+
+        const form80Count = await fetchForm80Requests(totalParams.from_datetime, totalParams.to_datetime)
+        setTotalForm80Requests(form80Count)
 
         // Fetch today's collected amount
         const todayRange = getTodayDateRange()
@@ -101,28 +147,24 @@ export function DashboardContent() {
           value={loading ? "Loading..." : `₹${totalCollected.toLocaleString()}`}
           description={dateRange?.from ? "Filtered period" : "All time collections"}
           icon={IndianRupee}
-          trend="+12.5%"
         />
         <StatsCard
           title="Today Collected"
           value={loading ? "Loading..." : `₹${todayCollected.toLocaleString()}`}
           description="Today's collections"
           icon={CalendarDays}
-          trend="+5.2%"
         />
         <StatsCard
           title="Total Payments"
-          value="--"
+          value={loading ? "Loading..." : totalDonations.toLocaleString()}
           description={dateRange?.from ? "Filtered period" : "All payment records"}
           icon={Users}
-          trend="+8.1%"
         />
         <StatsCard
           title="Form 80 Requests"
-          value="--"
+          value={loading ? "Loading..." : totalForm80Requests.toLocaleString()}
           description="Pending and given requests"
           icon={FileText}
-          trend="+3.4%"
         />
       </div>
     </main>
