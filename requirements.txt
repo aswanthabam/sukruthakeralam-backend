@@ -1,0 +1,11 @@
+alembic
+asyncpg
+email_validator
+fastapi
+psycopg2-binary
+pydantic-settings
+pyparsing
+pytz
+requests
+SQLAlchemy
+uvicorn
