@@ -1,50 +1,77 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { CalendarDays, IndianRupee, Users, FileText, Filter } from "lucide-react"
 import { StatsCard } from "@/components/stats-card"
 import { DateRangePicker } from "@/components/date-range-picker"
+import { axiosInstance } from "@/lib/axios"
 import type { DateRange } from "react-day-picker"
 
-// Mock data with dates
-const mockPayments = [
-  { name: "Rajesh Kumar", amount: 2500, status: "Completed", date: "2024-01-15" },
-  { name: "Priya Nair", amount: 1800, status: "Pending", date: "2024-01-14" },
-  { name: "Suresh Menon", amount: 3200, status: "Completed", date: "2024-01-13" },
-  { name: "Anitha Pillai", amount: 1500, status: "Failed", date: "2024-01-12" },
-  { name: "Mohanan K", amount: 2200, status: "Completed", date: "2024-01-11" },
-]
-
-const mockFormRequests = [
-  { name: "Anitha Pillai", status: "Pending", date: "2024-01-15", amount: 500 },
-  { name: "Mohanan K", status: "Given", date: "2024-01-13", amount: 500 },
-  { name: "Lakshmi Devi", status: "Pending", date: "2024-01-12", amount: 500 },
-]
+interface DonationTotalResponse {
+  total_donation_amount: number
+}
 
 export function DashboardContent() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [totalCollected, setTotalCollected] = useState<number>(0)
+  const [todayCollected, setTodayCollected] = useState<number>(0)
+  const [loading, setLoading] = useState<boolean>(true)
 
-  const filterDataByDate = (data: any[], dateField: string) => {
-    if (!dateRange?.from) return data
+  const getTodayDateRange = () => {
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
 
-    return data.filter((item) => {
-      const itemDate = new Date(item[dateField])
-      const fromDate = dateRange.from!
-      const toDate = dateRange.to || dateRange.from!
-
-      return itemDate >= fromDate && itemDate <= toDate
-    })
+    return {
+      from: startOfDay.toISOString(),
+      to: endOfDay.toISOString(),
+    }
   }
 
-  const filteredPayments = filterDataByDate(mockPayments, "date")
-  const filteredFormRequests = filterDataByDate(mockFormRequests, "date")
+  const fetchTotalAmount = async (fromDate?: string, toDate?: string) => {
+    try {
+      const params: any = {}
+      if (fromDate) params.from_datetime = fromDate
+      if (toDate) params.to_datetime = toDate
 
-  const totalCollected = filteredPayments.filter((p) => p.status === "Completed").reduce((sum, p) => sum + p.amount, 0)
+      const response = await axiosInstance.get<DonationTotalResponse>("/api/donation/total_amount", { params })
+      return response.data.total_donation_amount
+    } catch (error) {
+      console.error("Error fetching total amount:", error)
+      return 0
+    }
+  }
 
-  const todayCollected = filteredPayments
-    .filter((p) => p.status === "Completed" && p.date === new Date().toISOString().split("T")[0])
-    .reduce((sum, p) => sum + p.amount, 0)
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+
+      try {
+        // Fetch total collected (filtered by date range if selected)
+        const totalParams: any = {}
+        if (dateRange?.from) {
+          totalParams.from_datetime = dateRange.from.toISOString()
+          if (dateRange.to) {
+            totalParams.to_datetime = dateRange.to.toISOString()
+          }
+        }
+        const total = await fetchTotalAmount(totalParams.from_datetime, totalParams.to_datetime)
+        setTotalCollected(total)
+
+        // Fetch today's collected amount
+        const todayRange = getTodayDateRange()
+        const todayTotal = await fetchTotalAmount(todayRange.from, todayRange.to)
+        setTodayCollected(todayTotal)
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [dateRange])
 
   return (
     <main className="p-6">
@@ -71,29 +98,29 @@ export function DashboardContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="Total Collected"
-          value={`₹${totalCollected.toLocaleString()}`}
+          value={loading ? "Loading..." : `₹${totalCollected.toLocaleString()}`}
           description={dateRange?.from ? "Filtered period" : "All time collections"}
           icon={IndianRupee}
           trend="+12.5%"
         />
         <StatsCard
           title="Today Collected"
-          value={`₹${todayCollected.toLocaleString()}`}
+          value={loading ? "Loading..." : `₹${todayCollected.toLocaleString()}`}
           description="Today's collections"
           icon={CalendarDays}
           trend="+5.2%"
         />
         <StatsCard
           title="Total Payments"
-          value={filteredPayments.length.toString()}
+          value="--"
           description={dateRange?.from ? "Filtered period" : "All payment records"}
           icon={Users}
           trend="+8.1%"
         />
         <StatsCard
           title="Form 80 Requests"
-          value={filteredFormRequests.length.toString()}
-          description={`Pending: ${filteredFormRequests.filter((r) => r.status === "Pending").length}, Given: ${filteredFormRequests.filter((r) => r.status === "Given").length}`}
+          value="--"
+          description="Pending and given requests"
           icon={FileText}
           trend="+3.4%"
         />
