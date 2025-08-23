@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Filter, Download, Eye, Edit, ArrowUpDown, Loader2, RefreshCw } from "lucide-react"
+import { Search, Filter, Eye, Edit, ArrowUpDown, Loader2, RefreshCw } from "lucide-react"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { LogoutButton } from "@/components/logout-button"
 import { axiosInstance } from "@/lib/axios"
@@ -226,10 +226,6 @@ export default function PaymentsPage() {
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Refresh
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
             </Button>
             <LogoutButton />
           </div>
