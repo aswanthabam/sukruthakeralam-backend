@@ -129,17 +129,23 @@ export default function PaymentsPage() {
           }
         }
 
-        const response = await axiosInstance.get<DonationDetails[]>("/api/donation/list_donations", { params })
-        setDonations(response.data)
+        const response = await axiosInstance.get("/api/donation/list_donations", { params })
+        const responseData = response.data
+
+        // Handle both paginated response structure and direct array
+        const donationsArray = responseData.items || responseData || []
+        setDonations(Array.isArray(donationsArray) ? donationsArray : [])
+
         setPagination({
-          limit: response.data.length,
-          offset: offset,
-          next: null as string | null,
-          previous: null as string | null,
-          total: response.data.length,
+          limit: responseData.limit || 10,
+          offset: responseData.offset || offset,
+          next: responseData.next || null,
+          previous: responseData.previous || null,
+          total: responseData.total || donationsArray.length,
         })
       } catch (error) {
         console.error("Error fetching donations:", error)
+        setDonations([])
       } finally {
         setLoading(false)
       }
