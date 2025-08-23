@@ -10,6 +10,7 @@ from apps.donation.schema import (
 )
 from apps.donation.service import DonationServiceDependency
 from apps.payments.schema import PhonePePaymentStatus
+from core.exception.request import InvalidRequestException
 from core.fastapi.response.pagination import (
     PaginatedResponse,
     PaginationParams,
@@ -41,6 +42,8 @@ async def get_donation_status_endpoint(
     donation, phonepe_log = await donation_service.get_donation_status(
         order_id=order_id
     )
+    if not donation:
+        raise InvalidRequestException(message="Donation details not found")
     current_time = datetime.now(timezone.utc)
     is_payment_url_expired = (
         (
