@@ -237,7 +237,7 @@ export default function FormRequestsPage() {
           <Link href="/payments" className="text-sm font-medium text-muted-foreground hover:text-foreground">
             Payments
           </Link>
-          <Link href="/form-requests" className="text-sm font-medium text-accent hover:text-accent/80">
+          <Link href="/form-requests" className="text-sm font-medium text-primary font-semibold">
             Form 80 Requests
           </Link>
         </div>

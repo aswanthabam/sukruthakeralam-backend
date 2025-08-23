@@ -19,7 +19,7 @@ export default function AdminDashboard() {
       {/* Navigation */}
       <nav className="border-b border-border bg-card">
         <div className="flex items-center px-6 py-3 space-x-6">
-          <Link href="/" className="text-sm font-medium text-accent hover:text-accent/80">
+          <Link href="/" className="text-sm font-medium text-primary font-semibold">
             Dashboard
           </Link>
           <Link href="/payments" className="text-sm font-medium text-muted-foreground hover:text-foreground">

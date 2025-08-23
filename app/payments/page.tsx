@@ -114,7 +114,7 @@ export default function PaymentsPage() {
         return "bg-green-100 text-green-800 hover:bg-green-100"
       case "pending":
         return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-      case "failed":
+      case "payment_failed":
         return "bg-red-100 text-red-800 hover:bg-red-100"
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100"
@@ -170,7 +170,7 @@ export default function PaymentsPage() {
           <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
             Dashboard
           </Link>
-          <Link href="/payments" className="text-sm font-medium text-accent hover:text-accent/80">
+          <Link href="/payments" className="text-sm font-medium text-primary font-semibold">
             Payments
           </Link>
           <Link href="/form-requests" className="text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -211,7 +211,7 @@ export default function PaymentsPage() {
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="payment_failed">Failed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
