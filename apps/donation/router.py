@@ -172,7 +172,9 @@ async def get_donation_details_endpoint(
         "amount": donation.amount,
         "status": donation.status,
         "need_g80_certificate": donation.need_g80_certificate,
-        "g80_certificate_id": donation.g80_certificate.id,
+        "g80_certificate_id": (
+            donation.g80_certificate.id if donation.g80_certificate else None
+        ),
         "payment_details": {
             "payment_status": payment.payment_status,
             "merchant_order_id": payment.merchant_order_id,
