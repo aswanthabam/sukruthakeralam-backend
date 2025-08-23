@@ -31,7 +31,7 @@ async def get_payment_status(
     return {
         "order_id": payment_log.order_id,
         "amount": payment_log.amount,
-        "status": payment_log.status,
+        "status": payment_log.payment_status,
         "created_at": payment_log.created_at,
         "updated_at": payment_log.updated_at,
     }

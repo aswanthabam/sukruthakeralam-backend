@@ -155,7 +155,7 @@ class DonationService(AbstractService):
         )
         if donation and phonepe_log:
             if donation.status != DonationStatus.COMPLETED.value:
-                if phonepe_log.status == PhonePePaymentStatus.COMPLETED.value:
+                if phonepe_log.payment_status == PhonePePaymentStatus.COMPLETED.value:
                     donation.status = DonationStatus.COMPLETED.value
                     await self.session.commit()
                     await self.session.refresh(donation)
