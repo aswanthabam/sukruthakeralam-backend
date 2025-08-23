@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from enum import Enum as PyEnum
 
@@ -76,3 +77,27 @@ class DonationStatusResponse(BaseModel):
     status: str
     need_g80_certificate: bool
     payment_details: PaymentDetails
+
+
+class DonationListResponse(BaseModel):
+    id: str
+    order_id: str
+    full_name: str
+    email: str
+    amount: float
+    status: str
+    need_g80_certificate: bool
+    created_at: datetime
+
+
+class Form80SubmissionListResponse(BaseModel):
+    id: str
+    donation: DonationListResponse
+    pan_number: str
+    full_address: str
+    city: str
+    state: str
+    country: str
+    pin_code: str
+    status: FormG80SubmissionStatus
+    created_at: datetime

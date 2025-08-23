@@ -2,7 +2,7 @@ import base64
 from datetime import datetime
 import hashlib
 import json
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from typing_extensions import Annotated
 from fastapi.params import Depends
 from cryptography.fernet import Fernet
@@ -133,9 +133,7 @@ class DonationService(AbstractService):
 
     async def update_formg80_status(self, submission_id: int, new_status: str):
         form_g80_submission = await self.session.execute(
-            self.session.query(FormG80Submission).filter(
-                FormG80Submission.id == submission_id
-            )
+            select(FormG80Submission).filter(FormG80Submission.id == submission_id)
         )
         form_g80_submission = form_g80_submission.scalar_one_or_none()
         if not form_g80_submission:
@@ -175,31 +173,84 @@ class DonationService(AbstractService):
             raise InvalidRequestException(
                 "Either donation_id or order_id must be provided."
             )
-        return donation
-
-    async def total_donation_amount(self) -> float:
-        total = await self.session.scalar(
-            select(func.sum(Donation.amount)).where(
-                Donation.status == DonationStatus.COMPLETED.value
+        if not donation:
+            raise InvalidRequestException("Donation not found.")
+        payment = await self.session.scalar(
+            select(PhonePePaymentLog).where(
+                PhonePePaymentLog.merchant_order_id == donation.order_id
             )
         )
+        return donation, payment
+
+    async def total_donation_amount(
+        self, from_datetime: datetime | None = None, to_datetime: datetime | None = None
+    ) -> float:
+        query = select(func.sum(Donation.amount)).where(
+            Donation.status == DonationStatus.COMPLETED.value
+        )
+        if from_datetime is not None:
+            query = query.where(Donation.created_at >= from_datetime)
+        if to_datetime is not None:
+            query = query.where(Donation.created_at <= to_datetime)
+        total = await self.session.scalar(query)
         return total or 0.0
+
+    async def total_donation_count(
+        self, from_datetime: datetime | None = None, to_datetime: datetime | None = None
+    ) -> int:
+        query = select(func.count(distinct(Donation.id))).where(
+            Donation.status == DonationStatus.COMPLETED.value
+        )
+        if from_datetime is not None:
+            query = query.where(Donation.created_at >= from_datetime)
+        if to_datetime is not None:
+            query = query.where(Donation.created_at <= to_datetime)
+        total = await self.session.scalar(query)
+        return total or 0
+
+    async def total_form80_requests(
+        self, from_datetime: datetime | None = None, to_datetime: datetime | None = None
+    ) -> int:
+        query = select(func.count(distinct(Donation.id))).where(
+            Donation.status == DonationStatus.COMPLETED.value,
+            Donation.need_g80_certificate == True,
+        )
+
+        if from_datetime is not None:
+            query = query.where(FormG80Submission.created_at >= from_datetime)
+        if to_datetime is not None:
+            query = query.where(FormG80Submission.created_at <= to_datetime)
+
+        total = await self.session.scalar(query)
+        return total or 0
 
     async def list_donations(
         self,
-        from_date: datetime | None = None,
-        to_date: datetime | None = None,
+        from_datetime: datetime | None = None,
+        to_datetime: datetime | None = None,
+        search: str | None = None,
         status: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
     ):
-        query = select(Donation).options(joinedload(Donation.g80_certificate))
-        if from_date is not None:
-            query = query.where(Donation.created_at >= from_date)
-        if to_date is not None:
-            query = query.where(Donation.created_at <= to_date)
+        query = (
+            select(Donation)
+            .options(joinedload(Donation.g80_certificate))
+            .order_by(Donation.created_at.desc())
+        )
+        if from_datetime is not None:
+            query = query.where(Donation.created_at >= from_datetime)
+        if to_datetime is not None:
+            query = query.where(Donation.created_at <= to_datetime)
         if status is not None:
             query = query.where(Donation.status == status)
+        if search is not None:
+            query = query.where(
+                Donation.full_name.ilike(f"%{search}%")
+                | Donation.email.ilike(f"%{search}%")
+                | Donation.contact_number.ilike(f"%{search}%")
+                | Donation.order_id.ilike(f"%{search}%")
+            )
         if offset is not None:
             query = query.offset(offset)
         if limit is not None:
@@ -208,7 +259,47 @@ class DonationService(AbstractService):
         donations = await self.session.execute(query)
         return donations.scalars().all()
 
-    # async def list_form80_requests(self, donation_status: str | None = None, from_datetime: datetime | None = None, to_datetime: datetime | None = None, limit: int | None = None, offset: int | None = None,):
+    async def list_form80_requests(
+        self,
+        from_datetime: datetime | None = None,
+        to_datetime: datetime | None = None,
+        search: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ):
+        query = (
+            select(FormG80Submission)
+            .options(joinedload(FormG80Submission.donation))
+            .where(
+                Donation.status == DonationStatus.COMPLETED.value,
+                Donation.need_g80_certificate == True,
+            )
+            .join(Donation, FormG80Submission.donation_id == Donation.id)
+            .order_by(FormG80Submission.created_at.desc())
+        )
+        if from_datetime is not None:
+            query = query.where(FormG80Submission.created_at >= from_datetime)
+        if to_datetime is not None:
+            query = query.where(FormG80Submission.created_at <= to_datetime)
+        if status is not None:
+            query = query.where(FormG80Submission.status == status)
+        if search is not None:
+            query = query.where(
+                FormG80Submission.pan_number.ilike(f"%{search}%")
+                | FormG80Submission.full_address.ilike(f"%{search}%")
+                | FormG80Submission.city.ilike(f"%{search}%")
+                | FormG80Submission.state.ilike(f"%{search}%")
+                | FormG80Submission.country.ilike(f"%{search}%")
+                | FormG80Submission.pin_code.ilike(f"%{search}%")
+            )
+        if offset is not None:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+
+        form80_requests = await self.session.execute(query)
+        return form80_requests.scalars().all()
 
 
 DonationServiceDependency = Annotated[DonationService, DonationService.get_dependency()]

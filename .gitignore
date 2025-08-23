@@ -2,3 +2,4 @@
 volume/
 logs/
 __pycache__
+credentials.json
