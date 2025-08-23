@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 from sqlalchemy.orm import joinedload
 
 from apps.payments.models import PhonePePaymentLog
+from apps.payments.schema import PhonePePaymentStatus
 from apps.payments.service import PaymentServiceDependency
 from core.database.sqlalchamey.core import SessionDep
 from core.exception.request import InvalidRequestException
@@ -152,6 +153,18 @@ class DonationService(AbstractService):
                 PhonePePaymentLog.merchant_order_id == order_id
             )
         )
+        if donation and phonepe_log:
+            if donation.status != DonationStatus.COMPLETED.value:
+                if phonepe_log.status == PhonePePaymentStatus.COMPLETED.value:
+                    donation.status = DonationStatus.COMPLETED.value
+                    await self.session.commit()
+                    await self.session.refresh(donation)
+                else:
+                    phonepe_log = await self.payment_service.get_payment_status(
+                        order_id
+                    )
+                    await self.session.refresh(donation)
+
         return donation, phonepe_log
 
     async def get_donation_details(
