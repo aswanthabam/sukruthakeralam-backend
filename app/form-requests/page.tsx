@@ -1,114 +1,137 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Filter, Download, Eye, Edit, ArrowUpDown, CheckCircle, Clock } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Search, Filter, Download, Eye, ArrowUpDown, CheckCircle, Clock, Edit2 } from "lucide-react"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { LogoutButton } from "@/components/logout-button"
+import { axiosInstance } from "@/lib/axios"
 import type { DateRange } from "react-day-picker"
 import Link from "next/link"
 
-// Mock data for Form 80 requests
-const formRequestsData = [
-  {
-    id: 1,
-    name: "Anitha Pillai",
-    phone: "+91 9876543213",
-    email: "anitha.pillai@email.com",
-    amount: 500,
-    status: "Pending",
-    requestDate: "2024-01-15",
-    completedDate: null,
-  },
-  {
-    id: 2,
-    name: "Mohanan K",
-    phone: "+91 9876543214",
-    email: "mohanan.k@email.com",
-    amount: 500,
-    status: "Given",
-    requestDate: "2024-01-13",
-    completedDate: "2024-01-14",
-  },
-  {
-    id: 3,
-    name: "Lakshmi Devi",
-    phone: "+91 9876543215",
-    email: "lakshmi.devi@email.com",
-    amount: 500,
-    status: "Pending",
-    requestDate: "2024-01-12",
-    completedDate: null,
-  },
-  {
-    id: 4,
-    name: "Ravi Varma",
-    phone: "+91 9876543216",
-    email: "ravi.varma@email.com",
-    amount: 500,
-    status: "Given",
-    requestDate: "2024-01-10",
-    completedDate: "2024-01-11",
-  },
-  {
-    id: 5,
-    name: "Sita Nair",
-    phone: "+91 9876543217",
-    email: "sita.nair@email.com",
-    amount: 500,
-    status: "Pending",
-    requestDate: "2024-01-09",
-    completedDate: null,
-  },
-  {
-    id: 6,
-    name: "Krishna Menon",
-    phone: "+91 9876543218",
-    email: "krishna.menon@email.com",
-    amount: 500,
-    status: "Given",
-    requestDate: "2024-01-08",
-    completedDate: "2024-01-09",
-  },
-]
+interface Form80Request {
+  id: string
+  donation: {
+    id: string
+    order_id: string
+    full_name: string
+    email: string
+    amount: number
+    status: string
+    need_g80_certificate: boolean
+    created_at: string
+  }
+  pan_number: string
+  full_address: string
+  city: string
+  state: string
+  country: string
+  pin_code: string
+  status: "pending" | "given"
+  created_at: string
+}
+
+interface ApiResponse {
+  limit: number
+  offset: number
+  next: string | null
+  previous: string | null
+  items: Form80Request[]
+}
 
 export default function FormRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [sortField, setSortField] = useState("requestDate")
+  const [sortField, setSortField] = useState("created_at")
   const [sortDirection, setSortDirection] = useState("desc")
-  const [requests, setRequests] = useState(formRequestsData)
+  const [requests, setRequests] = useState<Form80Request[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalRequests, setTotalRequests] = useState(0)
+  const [selectedRequest, setSelectedRequest] = useState<Form80Request | null>(null)
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const limit = 10
 
-  const filteredRequests = requests
-    .filter((request) => {
-      const matchesSearch =
-        request.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.phone.includes(searchTerm)
-      const matchesStatus = statusFilter === "all" || request.status.toLowerCase() === statusFilter
+  const fetchRequests = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: (currentPage * limit).toString(),
+      })
 
-      let matchesDate = true
       if (dateRange?.from) {
-        const requestDate = new Date(request.requestDate)
-        const fromDate = dateRange.from
-        const toDate = dateRange.to || dateRange.from
-        matchesDate = requestDate >= fromDate && requestDate <= toDate
+        const fromDate = new Date(dateRange.from)
+        fromDate.setHours(0, 0, 0, 0)
+        params.append("from_datetime", fromDate.toISOString())
       }
 
-      return matchesSearch && matchesStatus && matchesDate
-    })
-    .sort((a, b) => {
-      const aValue = a[sortField as keyof typeof a]
-      const bValue = b[sortField as keyof typeof b]
-      const direction = sortDirection === "asc" ? 1 : -1
-      return aValue > bValue ? direction : -direction
-    })
+      if (dateRange?.to) {
+        const toDate = new Date(dateRange.to)
+        toDate.setHours(23, 59, 59, 999)
+        params.append("to_datetime", toDate.toISOString())
+      }
+
+      const response = await axiosInstance.get<ApiResponse>(`/api/donation/list_form80_requests?${params}`)
+      setRequests(response.data.items)
+      setTotalRequests(response.data.items.length)
+    } catch (error) {
+      console.error("Error fetching form80 requests:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateRequestStatus = async (requestId: string, newStatus: "pending" | "given") => {
+    try {
+      setStatusUpdateLoading(true)
+      await axiosInstance.post(`/api/donation/submit_form80/${requestId}`, {
+        status: newStatus,
+      })
+
+      // Update local state
+      setRequests((prev) =>
+        prev.map((request) => (request.id === requestId ? { ...request, status: newStatus } : request)),
+      )
+      setIsDialogOpen(false)
+      setSelectedRequest(null)
+    } catch (error) {
+      console.error("Error updating form80 status:", error)
+    } finally {
+      setStatusUpdateLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchRequests()
+  }, [currentPage, dateRange])
+
+  const filteredRequests = requests.filter((request) => {
+    const matchesSearch =
+      request.donation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.donation.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.donation.order_id.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesStatus = statusFilter === "all" || request.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -141,22 +164,19 @@ export default function FormRequestsPage() {
     }
   }
 
-  const updateRequestStatus = (id: number, newStatus: string) => {
-    setRequests((prev) =>
-      prev.map((request) =>
-        request.id === id
-          ? {
-              ...request,
-              status: newStatus,
-              completedDate: newStatus === "Given" ? new Date().toISOString().split("T")[0] : null,
-            }
-          : request,
-      ),
+  const pendingCount = filteredRequests.filter((r) => r.status === "pending").length
+  const givenCount = filteredRequests.filter((r) => r.status === "given").length
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading form requests...</p>
+        </div>
+      </div>
     )
   }
-
-  const pendingCount = filteredRequests.filter((r) => r.status === "Pending").length
-  const givenCount = filteredRequests.filter((r) => r.status === "Given").length
 
   return (
     <div className="min-h-screen bg-background">
@@ -262,7 +282,7 @@ export default function FormRequestsPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, email, or phone..."
+                    placeholder="Search by name, email, or order ID..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 w-80"
@@ -287,61 +307,127 @@ export default function FormRequestsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("name")}>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort("donation.full_name")}
+                    >
                       <div className="flex items-center gap-2">
                         Name
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead>Phone Number</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>PAN Number</TableHead>
+                    <TableHead>Address</TableHead>
                     <TableHead>Form Status</TableHead>
-                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("requestDate")}>
+                    <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("created_at")}>
                       <div className="flex items-center gap-2">
                         Request Date
                         <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead>Completed Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.map((request) => (
                     <TableRow key={request.id}>
-                      <TableCell className="font-medium">{request.name}</TableCell>
-                      <TableCell>{request.phone}</TableCell>
-                      <TableCell>{request.email}</TableCell>
-                      <TableCell className="font-semibold">₹{request.amount}</TableCell>
+                      <TableCell className="font-mono text-sm">{request.donation.order_id}</TableCell>
+                      <TableCell className="font-medium">{request.donation.full_name}</TableCell>
+                      <TableCell>{request.donation.email}</TableCell>
+                      <TableCell className="font-semibold">₹{request.donation.amount.toLocaleString()}</TableCell>
+                      <TableCell className="font-mono text-sm">{request.pan_number}</TableCell>
+                      <TableCell
+                        className="max-w-xs truncate"
+                        title={`${request.full_address}, ${request.city}, ${request.state}, ${request.country} - ${request.pin_code}`}
+                      >
+                        {request.city}, {request.state}
+                      </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusColor(request.status)} flex items-center gap-1 w-fit`}>
                           {getStatusIcon(request.status)}
-                          {request.status}
+                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(request.requestDate).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        {request.completedDate ? new Date(request.completedDate).toLocaleDateString() : "-"}
-                      </TableCell>
+                      <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title="View Details">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {request.status === "Pending" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => updateRequestStatus(request.id, "Given")}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <Dialog
+                            open={isDialogOpen && selectedRequest?.id === request.id}
+                            onOpenChange={(open) => {
+                              setIsDialogOpen(open)
+                              if (!open) setSelectedRequest(null)
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedRequest(request)}
+                                title="Update Status"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Update Form 80 Status</DialogTitle>
+                                <DialogDescription>
+                                  Update the status for {request.donation.full_name}'s Form 80 request.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="py-4">
+                                <div className="space-y-2">
+                                  <p>
+                                    <strong>Order ID:</strong> {request.donation.order_id}
+                                  </p>
+                                  <p>
+                                    <strong>Name:</strong> {request.donation.full_name}
+                                  </p>
+                                  <p>
+                                    <strong>Amount:</strong> ₹{request.donation.amount.toLocaleString()}
+                                  </p>
+                                  <p>
+                                    <strong>Current Status:</strong>
+                                    <Badge className={`ml-2 ${getStatusColor(request.status)}`}>
+                                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                    </Badge>
+                                  </p>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setIsDialogOpen(false)}
+                                  disabled={statusUpdateLoading}
+                                >
+                                  Cancel
+                                </Button>
+                                {request.status === "pending" ? (
+                                  <Button
+                                    onClick={() => updateRequestStatus(request.id, "given")}
+                                    disabled={statusUpdateLoading}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    {statusUpdateLoading ? "Updating..." : "Mark as Given"}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    onClick={() => updateRequestStatus(request.id, "pending")}
+                                    disabled={statusUpdateLoading}
+                                    variant="outline"
+                                  >
+                                    {statusUpdateLoading ? "Updating..." : "Mark as Pending"}
+                                  </Button>
+                                )}
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -352,14 +438,22 @@ export default function FormRequestsPage() {
 
             {/* Pagination */}
             <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredRequests.length} of {requests.length} requests
-              </p>
+              <p className="text-sm text-muted-foreground">Showing {filteredRequests.length} requests</p>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+                >
                   Previous
                 </Button>
-                <Button variant="outline" size="sm" disabled>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={filteredRequests.length < limit}
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                >
                   Next
                 </Button>
               </div>
