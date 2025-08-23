@@ -229,7 +229,7 @@ export default function PaymentsPage() {
     try {
       setDetailsLoading(true);
       const response = await axiosInstance.get<DonationDetails>(
-        `/api/donation-details/${donationId}`
+        `/api/donation/donation-details/${donationId}`
       );
       setSelectedDonation(response.data);
       setShowDetailsDialog(true);
