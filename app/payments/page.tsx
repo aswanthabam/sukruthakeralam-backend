@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,72 +48,65 @@ export default function PaymentsPage() {
     total: 0,
   })
 
-  const fetchDonations = async (offset = 0) => {
-    try {
-      setLoading(true)
-      const params: any = {
-        limit: 10,
-        offset,
-      }
-
-      // Add date filtering if date range is selected
-      if (dateRange?.from) {
-        const fromDate = new Date(dateRange.from)
-        fromDate.setHours(0, 0, 0, 0)
-        params.from_datetime = fromDate.toISOString()
-
-        if (dateRange.to) {
-          const toDate = new Date(dateRange.to)
-          toDate.setHours(23, 59, 59, 999)
-          params.to_datetime = toDate.toISOString()
-        } else {
-          const toDate = new Date(dateRange.from)
-          toDate.setHours(23, 59, 59, 999)
-          params.to_datetime = toDate.toISOString()
+  const fetchDonations = useCallback(
+    async (offset = 0) => {
+      try {
+        setLoading(true)
+        const params: any = {
+          limit: 10,
+          offset,
         }
-      }
 
-      const response = await axiosInstance.get<DonationsResponse>("/api/donation/list_donations", { params })
-      setDonations(response.data.items)
-      setPagination({
-        limit: response.data.limit,
-        offset: response.data.offset,
-        next: response.data.next,
-        previous: response.data.previous,
-        total: response.data.items.length,
-      })
-    } catch (error) {
-      console.error("Error fetching donations:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+        // Add search parameter
+        if (searchTerm.trim()) {
+          params.search = searchTerm.trim()
+        }
+
+        // Add status filter parameter
+        if (statusFilter !== "all") {
+          params.status = statusFilter
+        }
+
+        // Add date filtering if date range is selected
+        if (dateRange?.from) {
+          const fromDate = new Date(dateRange.from)
+          fromDate.setHours(0, 0, 0, 0)
+          params.from_datetime = fromDate.toISOString()
+
+          if (dateRange.to) {
+            const toDate = new Date(dateRange.to)
+            toDate.setHours(23, 59, 59, 999)
+            params.to_datetime = toDate.toISOString()
+          } else {
+            const toDate = new Date(dateRange.from)
+            toDate.setHours(23, 59, 59, 999)
+            params.to_datetime = toDate.toISOString()
+          }
+        }
+
+        const response = await axiosInstance.get<DonationsResponse>("/api/donation/list_donations", { params })
+        setDonations(response.data.items)
+        setPagination({
+          limit: response.data.limit,
+          offset: response.data.offset,
+          next: response.data.next,
+          previous: response.data.previous,
+          total: response.data.items.length,
+        })
+      } catch (error) {
+        console.error("Error fetching donations:", error)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchTerm, statusFilter, dateRange],
+  )
 
   useEffect(() => {
     fetchDonations(0)
-  }, [dateRange])
+  }, [fetchDonations])
 
-  const filteredDonations = donations
-    .filter((donation) => {
-      const matchesSearch =
-        donation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        donation.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        donation.order_id.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesStatus = statusFilter === "all" || donation.status.toLowerCase() === statusFilter
-
-      return matchesSearch && matchesStatus
-    })
-    .sort((a, b) => {
-      const aValue = a[sortField as keyof Donation]
-      const bValue = b[sortField as keyof Donation]
-      const direction = sortDirection === "asc" ? 1 : -1
-
-      if (sortField === "amount") {
-        return direction * (Number(aValue) - Number(bValue))
-      }
-
-      return aValue > bValue ? direction : -direction
-    })
+  const displayedDonations = donations
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -265,7 +258,7 @@ export default function PaymentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredDonations.map((donation) => (
+                      {displayedDonations.map((donation) => (
                         <TableRow key={donation.order_id}>
                           <TableCell className="font-mono text-sm">{donation.order_id}</TableCell>
                           <TableCell className="font-medium">{donation.full_name}</TableCell>
@@ -299,7 +292,7 @@ export default function PaymentsPage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-sm text-muted-foreground">
-                    Showing {filteredDonations.length} payments (Offset: {pagination.offset})
+                    Showing {displayedDonations.length} payments (Offset: {pagination.offset})
                   </p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={handlePrevious} disabled={!pagination.previous}>

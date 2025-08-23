@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,44 +61,70 @@ export default function FormRequestsPage() {
   const [requests, setRequests] = useState<Form80Request[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [loading, setLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState(0)
-  const [totalRequests, setTotalRequests] = useState(0)
+  const [pagination, setPagination] = useState({
+    limit: 10,
+    offset: 0,
+    next: null as string | null,
+    previous: null as string | null,
+  })
   const [selectedRequest, setSelectedRequest] = useState<Form80Request | null>(null)
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [viewRequest, setViewRequest] = useState<Form80Request | null>(null)
-  const limit = 10
 
-  const fetchRequests = async () => {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: (currentPage * limit).toString(),
-      })
+  const fetchRequests = useCallback(
+    async (offset = 0) => {
+      try {
+        setLoading(true)
+        const params: any = {
+          limit: 10,
+          offset,
+        }
 
-      if (dateRange?.from) {
-        const fromDate = new Date(dateRange.from)
-        fromDate.setHours(0, 0, 0, 0)
-        params.append("from_datetime", fromDate.toISOString())
+        // Add search parameter
+        if (searchTerm.trim()) {
+          params.search = searchTerm.trim()
+        }
+
+        // Add status filter parameter
+        if (statusFilter !== "all") {
+          params.status = statusFilter
+        }
+
+        // Add date filtering if date range is selected
+        if (dateRange?.from) {
+          const fromDate = new Date(dateRange.from)
+          fromDate.setHours(0, 0, 0, 0)
+          params.from_datetime = fromDate.toISOString()
+
+          if (dateRange.to) {
+            const toDate = new Date(dateRange.to)
+            toDate.setHours(23, 59, 59, 999)
+            params.to_datetime = toDate.toISOString()
+          } else {
+            const toDate = new Date(dateRange.from)
+            toDate.setHours(23, 59, 59, 999)
+            params.to_datetime = toDate.toISOString()
+          }
+        }
+
+        const response = await axiosInstance.get<ApiResponse>("/api/donation/list_form80_requests", { params })
+        setRequests(response.data.items)
+        setPagination({
+          limit: response.data.limit,
+          offset: response.data.offset,
+          next: response.data.next,
+          previous: response.data.previous,
+        })
+      } catch (error) {
+        console.error("Error fetching form80 requests:", error)
+      } finally {
+        setLoading(false)
       }
-
-      if (dateRange?.to) {
-        const toDate = new Date(dateRange.to)
-        toDate.setHours(23, 59, 59, 999)
-        params.append("to_datetime", toDate.toISOString())
-      }
-
-      const response = await axiosInstance.get<ApiResponse>(`/api/donation/list_form80_requests?${params}`)
-      setRequests(response.data.items)
-      setTotalRequests(response.data.items.length)
-    } catch (error) {
-      console.error("Error fetching form80 requests:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    },
+    [searchTerm, statusFilter, dateRange],
+  )
 
   const updateRequestStatus = async (requestId: string, newStatus: "pending" | "given") => {
     try {
@@ -121,19 +147,10 @@ export default function FormRequestsPage() {
   }
 
   useEffect(() => {
-    fetchRequests()
-  }, [currentPage, dateRange])
+    fetchRequests(0)
+  }, [fetchRequests])
 
-  const filteredRequests = requests.filter((request) => {
-    const matchesSearch =
-      request.donation.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.donation.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.donation.order_id.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === "all" || request.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
+  const displayedRequests = requests
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -166,8 +183,19 @@ export default function FormRequestsPage() {
     }
   }
 
-  const pendingCount = filteredRequests.filter((r) => r.status === "pending").length
-  const givenCount = filteredRequests.filter((r) => r.status === "given").length
+  const handlePrevious = () => {
+    if (pagination.previous) {
+      const newOffset = Math.max(0, pagination.offset - pagination.limit)
+      fetchRequests(newOffset)
+    }
+  }
+
+  const handleNext = () => {
+    if (pagination.next) {
+      const newOffset = pagination.offset + pagination.limit
+      fetchRequests(newOffset)
+    }
+  }
 
   if (loading) {
     return (
@@ -282,7 +310,7 @@ export default function FormRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRequests.map((request) => (
+                  {displayedRequests.map((request) => (
                     <TableRow key={request.id}>
                       <TableCell className="font-mono text-sm">{request.donation.order_id}</TableCell>
                       <TableCell className="font-medium">{request.donation.full_name}</TableCell>
@@ -485,22 +513,14 @@ export default function FormRequestsPage() {
 
             {/* Pagination */}
             <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">Showing {filteredRequests.length} requests</p>
+              <p className="text-sm text-muted-foreground">
+                Showing {displayedRequests.length} requests (Offset: {pagination.offset})
+              </p>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === 0}
-                  onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-                >
+                <Button variant="outline" size="sm" onClick={handlePrevious} disabled={!pagination.previous}>
                   Previous
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={filteredRequests.length < limit}
-                  onClick={() => setCurrentPage((prev) => prev + 1)}
-                >
+                <Button variant="outline" size="sm" onClick={handleNext} disabled={!pagination.next}>
                   Next
                 </Button>
               </div>
