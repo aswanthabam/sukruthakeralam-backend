@@ -1,6 +1,10 @@
+"use client"
+
 import { DashboardContent } from "@/components/dashboard-content"
 import { LogoutButton } from "@/components/logout-button"
 import Link from "next/link"
+import { RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function AdminDashboard() {
   return (
@@ -12,7 +16,19 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-semibold text-foreground">Sukrutha Keralam</h1>
             <p className="text-sm text-muted-foreground">Admin Dashboard</p>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+            <LogoutButton />
+          </div>
         </div>
       </header>
 

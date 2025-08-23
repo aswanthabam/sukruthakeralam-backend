@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Filter, Download, Eye, Edit, ArrowUpDown, Loader2 } from "lucide-react"
+import { Search, Filter, Download, Eye, Edit, ArrowUpDown, Loader2, RefreshCw } from "lucide-react"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { LogoutButton } from "@/components/logout-button"
 import { axiosInstance } from "@/lib/axios"
@@ -75,7 +75,7 @@ interface DonationDetails {
 
 export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("completed") // Set default status filter to "completed"
   const [sortField, setSortField] = useState("created_at")
   const [sortDirection, setSortDirection] = useState("desc")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -202,6 +202,10 @@ export default function PaymentsPage() {
     }
   }
 
+  const handleRefresh = () => {
+    fetchDonations(0)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -213,6 +217,10 @@ export default function PaymentsPage() {
           </div>
           <div className="flex items-center gap-4">
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
               Export

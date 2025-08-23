@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Search, Filter, Download, Eye, ArrowUpDown, CheckCircle, Clock, Edit2 } from "lucide-react"
+import { Search, Filter, Download, Eye, ArrowUpDown, CheckCircle, Clock, Edit2, RefreshCw } from "lucide-react"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { LogoutButton } from "@/components/logout-button"
 import { axiosInstance } from "@/lib/axios"
@@ -55,7 +55,7 @@ interface ApiResponse {
 
 export default function FormRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("pending")
   const [sortField, setSortField] = useState("created_at")
   const [sortDirection, setSortDirection] = useState("desc")
   const [requests, setRequests] = useState<Form80Request[]>([])
@@ -197,6 +197,10 @@ export default function FormRequestsPage() {
     }
   }
 
+  const handleRefresh = () => {
+    fetchRequests(0)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -219,6 +223,10 @@ export default function FormRequestsPage() {
           </div>
           <div className="flex items-center gap-4">
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
               Export
