@@ -66,6 +66,8 @@ export default function FormRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<Form80Request | null>(null)
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [viewRequest, setViewRequest] = useState<Form80Request | null>(null)
   const limit = 10
 
   const fetchRequests = async () => {
@@ -215,58 +217,6 @@ export default function FormRequestsPage() {
 
       {/* Main Content */}
       <main className="p-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Requests</p>
-                  <p className="text-2xl font-bold text-foreground">{filteredRequests.length}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dateRange?.from ? "Filtered period" : "All time"}
-                  </p>
-                </div>
-                <div className="h-8 w-8 bg-accent/10 rounded-full flex items-center justify-center">
-                  <Clock className="h-4 w-4 text-accent" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-orange-600">{pendingCount}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dateRange?.from ? "Filtered period" : "All time"}
-                  </p>
-                </div>
-                <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Clock className="h-4 w-4 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Given</p>
-                  <p className="text-2xl font-bold text-green-600">{givenCount}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dateRange?.from ? "Filtered period" : "All time"}
-                  </p>
-                </div>
-                <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -354,9 +304,106 @@ export default function FormRequestsPage() {
                       <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" title="View Details">
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <Dialog
+                            open={isViewDialogOpen && viewRequest?.id === request.id}
+                            onOpenChange={(open) => {
+                              setIsViewDialogOpen(open)
+                              if (!open) setViewRequest(null)
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewRequest(request)}
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Form 80 Request Details</DialogTitle>
+                                <DialogDescription>
+                                  Complete details for {request.donation.full_name}'s Form 80 request.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-3">
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Order ID</label>
+                                      <p className="font-mono text-sm">{request.donation.order_id}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                                      <p className="font-medium">{request.donation.full_name}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Email</label>
+                                      <p>{request.donation.email}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">
+                                        Donation Amount
+                                      </label>
+                                      <p className="font-semibold">₹{request.donation.amount.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">PAN Number</label>
+                                      <p className="font-mono text-sm">{request.pan_number}</p>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Full Address</label>
+                                      <p>{request.full_address}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">City</label>
+                                      <p>{request.city}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">State</label>
+                                      <p>{request.state}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Country</label>
+                                      <p>{request.country}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">PIN Code</label>
+                                      <p className="font-mono text-sm">{request.pin_code}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Form Status</label>
+                                      <div className="mt-1">
+                                        <Badge
+                                          className={`${getStatusColor(request.status)} flex items-center gap-1 w-fit`}
+                                        >
+                                          {getStatusIcon(request.status)}
+                                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-muted-foreground">Request Date</label>
+                                      <p>{new Date(request.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+                                  Close
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                           <Dialog
                             open={isDialogOpen && selectedRequest?.id === request.id}
                             onOpenChange={(open) => {
