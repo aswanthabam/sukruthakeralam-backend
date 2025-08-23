@@ -72,6 +72,7 @@ jobs:
               --exclude='__pycache__/' \
               --exclude='.env' \
               --exclude='firebase-secret.json' \
+              --exclude='credentials.json' \
               --exclude='media/' \
               -e "ssh -o StrictHostKeyChecking=no" ./ $USER@$REMOTE_IP:$PROJECT_PATH --rsync-path="sudo rsync"
           fi
