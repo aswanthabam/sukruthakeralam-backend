@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Body, Request
 
 from apps.auth.dependency import AuthDependency
@@ -14,6 +14,7 @@ from core.fastapi.response.pagination import (
     PaginationParams,
     paginated_response,
 )
+from apps.settings import settings
 
 router = APIRouter(
     prefix="/donation",
@@ -39,6 +40,16 @@ async def get_donation_status_endpoint(
     donation, phonepe_log = await donation_service.get_donation_status(
         order_id=order_id
     )
+    current_time = datetime.now(timezone.utc)
+    is_payment_url_expired = (
+        (
+            phonepe_log.created_at
+            + timedelta(seconds=settings.PHONEPE_PAYMENT_EXPIRY_SECONDS)
+        )
+        < current_time
+        if phonepe_log
+        else True
+    )
     return {
         "order_id": donation.order_id,
         "full_name": donation.full_name,
@@ -49,6 +60,7 @@ async def get_donation_status_endpoint(
             "payment_status": phonepe_log.payment_status,
             "merchant_order_id": phonepe_log.merchant_order_id,
             "phonepe_order_id": phonepe_log.phonepe_order_id,
+            "is_payment_url_expired": is_payment_url_expired,
         },
         "donation": donation,
     }
