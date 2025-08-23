@@ -19,11 +19,14 @@ class PhonePePaymentLog(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     id = Column(
         String(36), primary_key=True, default=generate_uuid, unique=True, nullable=False
     )
-    merchant_order_id = Column(String(128), nullable=False, unique=True)
-    phonepe_order_id = Column(String(128), nullable=False)
+    merchant_order_id = Column(String(128), nullable=False, unique=True, index=True)
+    phonepe_order_id = Column(String(128), nullable=False, index=True)
     redirect_url = Column(String(512), nullable=True)
     payment_status = Column(
-        String(32), default=PhonePePaymentStatus.PENDING.value, nullable=False
+        String(32),
+        default=PhonePePaymentStatus.PENDING.value,
+        nullable=False,
+        index=True,
     )
     amount = Column(Float, nullable=False)
     currency = Column(String(8), nullable=False, default="INR")

@@ -17,14 +17,16 @@ class Donation(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     id = Column(
         String(36), primary_key=True, default=generate_uuid, unique=True, nullable=False
     )
-    order_id = Column(String(50), nullable=False, unique=True)
+    order_id = Column(String(50), nullable=False, unique=True, index=True)
     full_name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     contact_number = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
-    need_g80_certificate = Column(Boolean, default=False, nullable=False)
+    need_g80_certificate = Column(Boolean, default=False, nullable=False, index=True)
     confirmed_terms = Column(Boolean, default=False, nullable=False)
-    status = Column(String(50), nullable=False, default=DonationStatus.PENDING.value)
+    status = Column(
+        String(50), nullable=False, default=DonationStatus.PENDING.value, index=True
+    )
 
     g80_certificate = relationship(
         "FormG80Submission",
@@ -39,7 +41,9 @@ class FormG80Submission(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     id = Column(
         String(36), primary_key=True, default=generate_uuid, unique=True, nullable=False
     )
-    donation_id = Column(String(36), ForeignKey("donations.id"), nullable=False)
+    donation_id = Column(
+        String(36), ForeignKey("donations.id"), nullable=False, index=True
+    )
     pan_number = Column(String(20), nullable=False)
     full_address = Column(String(1000), nullable=False)
     city = Column(String(128), nullable=False)
@@ -47,7 +51,10 @@ class FormG80Submission(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     country = Column(String(128), nullable=False)
     pin_code = Column(String(16), nullable=False)
     status = Column(
-        String(50), nullable=False, default=FormG80SubmissionStatus.PENDING.value
+        String(50),
+        nullable=False,
+        default=FormG80SubmissionStatus.PENDING.value,
+        index=True,
     )
 
     donation = relationship("Donation", back_populates="g80_certificate")
