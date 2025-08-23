@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Search, Filter, Download, Eye, Edit, ArrowUpDown, Loader2 } from "lucide-react"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { LogoutButton } from "@/components/logout-button"
@@ -15,6 +16,7 @@ import type { DateRange } from "react-day-picker"
 import Link from "next/link"
 
 interface Donation {
+  id: string // Added id field for donation details API
   order_id: string
   full_name: string
   email: string
@@ -24,12 +26,51 @@ interface Donation {
   created_at: string
 }
 
-interface DonationsResponse {
-  limit: number
-  offset: number
-  next: string | null
-  previous: string | null
-  items: Donation[]
+interface DonationDetails {
+  order_id: string
+  full_name: string
+  email: string
+  contact_number: string
+  amount: number
+  status: string
+  need_g80_certificate: boolean
+  g80_certificate_id?: string
+  payment_details: {
+    payment_status: string
+    merchant_order_id: string
+    phonepe_order_id: string
+    payment_mode: string
+  }
+  donation: {
+    full_name: string
+    contact_number: string
+    need_g80_certificate: boolean
+    confirmed_terms: boolean
+    is_deleted: boolean
+    email: string
+    id: string
+    order_id: string
+    amount: number
+    status: string
+    created_at: string
+    updated_at: string
+    deleted_at: string | null
+    g80_certificate?: {
+      pan_number: string
+      id: string
+      city: string
+      country: string
+      status: string
+      is_deleted: boolean
+      donation_id: string
+      full_address: string
+      state: string
+      pin_code: string
+      created_at: string
+      updated_at: string
+      deleted_at: string | null
+    }
+  }
 }
 
 export default function PaymentsPage() {
@@ -47,6 +88,10 @@ export default function PaymentsPage() {
     previous: null as string | null,
     total: 0,
   })
+
+  const [selectedDonation, setSelectedDonation] = useState<DonationDetails | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   const fetchDonations = useCallback(
     async (offset = 0) => {
@@ -84,14 +129,14 @@ export default function PaymentsPage() {
           }
         }
 
-        const response = await axiosInstance.get<DonationsResponse>("/api/donation/list_donations", { params })
-        setDonations(response.data.items)
+        const response = await axiosInstance.get<DonationDetails[]>("/api/donation/list_donations", { params })
+        setDonations(response.data)
         setPagination({
-          limit: response.data.limit,
-          offset: response.data.offset,
-          next: response.data.next,
-          previous: response.data.previous,
-          total: response.data.items.length,
+          limit: response.data.length,
+          offset: offset,
+          next: null as string | null,
+          previous: null as string | null,
+          total: response.data.length,
         })
       } catch (error) {
         console.error("Error fetching donations:", error)
@@ -141,6 +186,19 @@ export default function PaymentsPage() {
     if (pagination.next) {
       const newOffset = pagination.offset + pagination.limit
       fetchDonations(newOffset)
+    }
+  }
+
+  const fetchDonationDetails = async (donationId: string) => {
+    try {
+      setDetailsLoading(true)
+      const response = await axiosInstance.get<DonationDetails>(`/donation-details/${donationId}`)
+      setSelectedDonation(response.data)
+      setShowDetailsDialog(true)
+    } catch (error) {
+      console.error("Error fetching donation details:", error)
+    } finally {
+      setDetailsLoading(false)
     }
   }
 
@@ -275,8 +333,17 @@ export default function PaymentsPage() {
                           <TableCell>{new Date(donation.created_at).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => fetchDonationDetails(donation.id)}
+                                disabled={detailsLoading}
+                              >
+                                {detailsLoading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
                               </Button>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4" />
@@ -307,6 +374,144 @@ export default function PaymentsPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Donation Details</DialogTitle>
+            </DialogHeader>
+            {selectedDonation && (
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Order ID:</span>
+                        <span className="font-mono text-sm">{selectedDonation.order_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Full Name:</span>
+                        <span>{selectedDonation.full_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Email:</span>
+                        <span>{selectedDonation.email}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Contact:</span>
+                        <span>{selectedDonation.contact_number}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Amount:</span>
+                        <span className="font-semibold">₹{selectedDonation.amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Status:</span>
+                        <Badge className={getStatusColor(selectedDonation.status)}>{selectedDonation.status}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Form 80 Required:</span>
+                        <Badge variant={selectedDonation.need_g80_certificate ? "default" : "secondary"}>
+                          {selectedDonation.need_g80_certificate ? "Yes" : "No"}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Created:</span>
+                        <span>{new Date(selectedDonation.donation.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Details */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Payment Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Payment Status:</span>
+                        <Badge className={getStatusColor(selectedDonation.payment_details.payment_status)}>
+                          {selectedDonation.payment_details.payment_status}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Payment Mode:</span>
+                        <span>{selectedDonation.payment_details.payment_mode}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Merchant Order ID:</span>
+                        <span className="font-mono text-sm">{selectedDonation.payment_details.merchant_order_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">PhonePe Order ID:</span>
+                        <span className="font-mono text-sm">{selectedDonation.payment_details.phonepe_order_id}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* G80 Certificate Details */}
+                {selectedDonation.donation.g80_certificate && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Form 80 Certificate Details</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">PAN Number:</span>
+                          <span className="font-mono">{selectedDonation.donation.g80_certificate.pan_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Status:</span>
+                          <Badge
+                            variant={
+                              selectedDonation.donation.g80_certificate.status === "pending" ? "secondary" : "default"
+                            }
+                          >
+                            {selectedDonation.donation.g80_certificate.status}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">City:</span>
+                          <span>{selectedDonation.donation.g80_certificate.city}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">State:</span>
+                          <span>{selectedDonation.donation.g80_certificate.state}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Country:</span>
+                          <span>{selectedDonation.donation.g80_certificate.country}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Pin Code:</span>
+                          <span>{selectedDonation.donation.g80_certificate.pin_code}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Address:</span>
+                          <span className="text-right max-w-xs">
+                            {selectedDonation.donation.g80_certificate.full_address}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Requested:</span>
+                          <span>{new Date(selectedDonation.donation.g80_certificate.created_at).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   )
