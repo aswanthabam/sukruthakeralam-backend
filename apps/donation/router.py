@@ -61,6 +61,7 @@ async def get_donation_status_endpoint(
             "merchant_order_id": phonepe_log.merchant_order_id,
             "phonepe_order_id": phonepe_log.phonepe_order_id,
             "is_payment_url_expired": is_payment_url_expired,
+            "payment_url": phonepe_log.redirect_url,
         },
         "donation": donation,
     }
