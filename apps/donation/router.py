@@ -60,19 +60,23 @@ async def get_donation_status_endpoint(
         "amount": donation.amount,
         "status": donation.status,
         "need_g80_certificate": donation.need_g80_certificate,
-        "payment_details": {
-            "payment_status": phonepe_log.payment_status,
-            "merchant_order_id": phonepe_log.merchant_order_id,
-            "phonepe_order_id": phonepe_log.phonepe_order_id,
-            "is_payment_url_expired": is_payment_url_expired,
-            "payment_url": (
-                phonepe_log.redirect_url
-                if phonepe_log
-                and phonepe_log.payment_status == PhonePePaymentStatus.PENDING.value
-                and not is_payment_url_expired
-                else None
-            ),
-        },
+        "payment_details": (
+            {
+                "payment_status": phonepe_log.payment_status,
+                "merchant_order_id": phonepe_log.merchant_order_id,
+                "phonepe_order_id": phonepe_log.phonepe_order_id,
+                "is_payment_url_expired": is_payment_url_expired,
+                "payment_url": (
+                    phonepe_log.redirect_url
+                    if phonepe_log
+                    and phonepe_log.payment_status == PhonePePaymentStatus.PENDING.value
+                    and not is_payment_url_expired
+                    else None
+                ),
+            }
+            if phonepe_log
+            else None
+        ),
         "donation": donation,
     }
 
