@@ -9,6 +9,7 @@ from apps.donation.schema import (
     Form80SubmissionListResponse,
 )
 from apps.donation.service import DonationServiceDependency
+from apps.payments.schema import PhonePePaymentStatus
 from core.fastapi.response.pagination import (
     PaginatedResponse,
     PaginationParams,
@@ -61,7 +62,13 @@ async def get_donation_status_endpoint(
             "merchant_order_id": phonepe_log.merchant_order_id,
             "phonepe_order_id": phonepe_log.phonepe_order_id,
             "is_payment_url_expired": is_payment_url_expired,
-            "payment_url": phonepe_log.redirect_url,
+            "payment_url": (
+                phonepe_log.redirect_url
+                if phonepe_log
+                and phonepe_log.payment_status == PhonePePaymentStatus.PENDING.value
+                and not is_payment_url_expired
+                else None
+            ),
         },
         "donation": donation,
     }

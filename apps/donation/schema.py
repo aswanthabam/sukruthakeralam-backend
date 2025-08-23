@@ -68,8 +68,8 @@ class PaymentDetails(BaseModel):
     payment_status: str
     merchant_order_id: str
     phonepe_order_id: str
-    is_payment_url_expired: bool
-    payment_url: str
+    is_payment_url_expired: bool | None
+    payment_url: str | None
 
 
 class DonationStatusResponse(BaseModel):
