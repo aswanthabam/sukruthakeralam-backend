@@ -106,6 +106,10 @@ class PhonePeClient:
         client_version: int = 1,
         timeout: int = 30,
     ):
+        if not settings.DEBUG:
+            print(f"Phonepe: Running in Production mode [{settings.DEBUG}]")
+        else:
+            print(f"Phonepe: Running in Sandbox mode [{settings.DEBUG}]")
         self._endpoints = (
             self._PROD_API_ENDPOINTS
             if not settings.DEBUG
