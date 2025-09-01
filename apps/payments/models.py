@@ -21,7 +21,7 @@ class PhonePePaymentLog(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     )
     merchant_order_id = Column(String(128), nullable=False, unique=True, index=True)
     phonepe_order_id = Column(String(128), nullable=False, index=True)
-    redirect_url = Column(String(512), nullable=True)
+    redirect_url = Column(String(1024), nullable=True)
     payment_status = Column(
         String(32),
         default=PhonePePaymentStatus.PENDING.value,
