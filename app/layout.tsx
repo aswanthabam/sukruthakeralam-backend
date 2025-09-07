@@ -1,23 +1,29 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import "./globals.css"
-import { AuthProvider } from "@/components/auth-provider"
+import type React from "react";
+import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import "./globals.css";
+import { AuthProvider } from "@/components/auth-provider";
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
-}
+  title: "Sukruthakeralam Admin Dashboard",
+  description: "Sukruthakeralam Admin Dashboard",
+  generator: "Next.js",
+  icons: {
+    icon: "/dp-150x150.png",
+  },
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
+    >
       <head>
         <style>{`
 html {
@@ -31,5 +37,5 @@ html {
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
-  )
+  );
 }
