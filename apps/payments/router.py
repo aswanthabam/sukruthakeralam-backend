@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query
+from fastapi.params import Body
 from fastapi.responses import RedirectResponse
 
 from apps.donation.service import DonationServiceDependency
@@ -35,3 +36,29 @@ async def get_payment_status(
         "created_at": payment_log.created_at,
         "updated_at": payment_log.updated_at,
     }
+
+
+@router.post("/payment/sbiepay_success", description="SBIePay Success Callback")
+async def sbiepay_success(
+    # payment_service: PaymentServiceDependency,
+    # donation_service: DonationServiceDependency,
+    # request_data: dict = Body(...),
+):
+    """
+    Endpoint to handle SBIePay success callback.
+    Expects encrypted response data in the request body.
+    """
+    raise NotImplemented("This is not implemented yet")
+
+
+@router.post("/payment/sbiepay_failure", description="SBIePay Failure Callback")
+async def sbiepay_failure(
+    # payment_service: PaymentServiceDependency,
+    # donation_service: DonationServiceDependency,
+    # request_data: dict = Body(...),
+):
+    """
+    Endpoint to handle SBIePay failure callback.
+    Expects encrypted response data in the request body.
+    """
+    raise NotImplemented("This is not implemented yet")
