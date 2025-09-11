@@ -62,3 +62,18 @@ async def sbiepay_failure(
     Expects encrypted response data in the request body.
     """
     raise NotImplemented("This is not implemented yet")
+
+
+@router.post(
+    "/payment/sbiepay_pushresponse", description="SBIePay Push Response Callback"
+)
+async def sbiepay_pushresponse(
+    # payment_service: PaymentServiceDependency,
+    # donation_service: DonationServiceDependency,
+    # request_data: dict = Body(...),
+):
+    """
+    Endpoint to handle SBIePay push response callback.
+    Expects encrypted response data in the request body.
+    """
+    raise NotImplemented("This is not implemented yet")
