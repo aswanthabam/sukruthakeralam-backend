@@ -58,12 +58,12 @@ class DonationService(AbstractService):
                 country=donation_request.form_g80.country,
                 pin_code=donation_request.form_g80.pin_code,
             )
-
+        customer_id = f"{donation.id}"
         # Create SBI ePay payment
         payment_data = await self.payment_service.create_sbiepay_payment(
             order_id=donation.order_id,
             amount=donation.amount,
-            customer_id=donation.email,  # Use email as customer ID
+            customer_id=customer_id,
             # meta_info={"donor_name": donation.full_name, "donor_email": donation.email},
         )
 
