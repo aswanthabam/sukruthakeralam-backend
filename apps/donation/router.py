@@ -25,14 +25,37 @@ router = APIRouter(
 
 @router.post("/donate")
 async def create_donation_endpoint(
-    donation: DonationRequest, donation_service: "DonationServiceDependency"
+    donation: DonationRequest,
+    donation_service: "DonationServiceDependency",
 ):
-    payment_log = await donation_service.submit_donation(donation_request=donation)
-    return {
-        "payment_url": payment_log.redirect_url,
-        "merchant_order_id": payment_log.merchant_order_id,
-        "amount": payment_log.amount,
-    }
+    gateway = "sbiepay"
+    """Create a donation with specified payment gateway"""
+    if gateway.lower() == "sbiepay":
+        # SBI ePay Integration
+        payment_data = await donation_service.submit_donation_with_sbiepay(
+            donation_request=donation
+        )
+
+        return {
+            "gateway": "sbiepay",
+            "payment_form_data": payment_data["form_data"],
+            "gateway_url": payment_data["gateway_url"],
+            "merchant_order_id": payment_data["order_id"],
+            "amount": payment_data["amount"],
+            "instructions": "Submit the form data to gateway_url to complete payment",
+        }
+    else:
+        # PhonePe Integration (existing)
+        payment_log = await donation_service.submit_donation_with_phonepe(
+            donation_request=donation
+        )
+
+        return {
+            "gateway": "phonepe",
+            "payment_url": payment_log.redirect_url,
+            "merchant_order_id": payment_log.merchant_order_id,
+            "amount": payment_log.amount,
+        }
 
 
 @router.get("/status/{order_id}")

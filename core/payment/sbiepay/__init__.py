@@ -1,3 +1,3 @@
-from .client import SBIePayClient
+from .client import SbiePayClient
 
-sbi_epay_client = SBIePayClient()
+sbiepay_client = SbiePayClient()

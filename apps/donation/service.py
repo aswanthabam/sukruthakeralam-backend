@@ -8,7 +8,7 @@ from fastapi.params import Depends
 from cryptography.fernet import Fernet
 from sqlalchemy.orm import joinedload
 
-from apps.payments.models import PhonePePaymentLog
+from apps.payments.models import PhonePePaymentLog, SbiePayPaymentLog
 from apps.payments.schema import PhonePePaymentStatus
 from apps.payments.service import PaymentServiceDependency
 from core.database.sqlalchamey.core import SessionDep
@@ -34,7 +34,48 @@ class DonationService(AbstractService):
         self.session = session
         self.payment_service = payment_service
 
-    async def submit_donation(
+    async def submit_donation_with_sbiepay(
+        self, donation_request: DonationRequest
+    ) -> dict:
+        """Submit donation using SBI ePay payment gateway"""
+        donation = await self.create_donation(
+            full_name=donation_request.full_name,
+            email=donation_request.email,
+            contact_number=donation_request.contact_number,
+            amount=donation_request.amount,
+            need_g80_certificate=donation_request.need_g80_certificate,
+            confirmed_terms=donation_request.confirmed_terms,
+            payment_provider="sbiepay",
+        )
+
+        if donation.need_g80_certificate and donation_request.form_g80:
+            form80 = await self.submit_formg80(
+                donation_id=donation.id,
+                pan_number=donation_request.form_g80.pan_number,
+                full_address=donation_request.form_g80.full_address,
+                city=donation_request.form_g80.city,
+                state=donation_request.form_g80.state,
+                country=donation_request.form_g80.country,
+                pin_code=donation_request.form_g80.pin_code,
+            )
+
+        # Create SBI ePay payment
+        payment_data = await self.payment_service.create_sbiepay_payment(
+            order_id=donation.order_id,
+            amount=donation.amount,
+            customer_id=donation.email,  # Use email as customer ID
+            # meta_info={"donor_name": donation.full_name, "donor_email": donation.email},
+        )
+
+        return {
+            "payment_log": payment_data["payment_log"],
+            "form_data": payment_data["form_data"],
+            "gateway_url": payment_data["gateway_url"],
+            "order_id": donation.order_id,
+            "amount": donation.amount,
+        }
+
+    async def submit_donation_with_phonepe(
         self, donation_request: DonationRequest
     ) -> PhonePePaymentLog:
         donation = await self.create_donation(
@@ -44,6 +85,7 @@ class DonationService(AbstractService):
             amount=donation_request.amount,
             need_g80_certificate=donation_request.need_g80_certificate,
             confirmed_terms=donation_request.confirmed_terms,
+            payment_provider="phonepe",
         )
         if donation.need_g80_certificate and donation_request.form_g80:
             form80 = await self.submit_formg80(
@@ -74,6 +116,15 @@ class DonationService(AbstractService):
         )
         return payment_log
 
+    async def submit_donation(
+        self, donation_request: DonationRequest, gateway: str = "phonepe"
+    ):
+        """Submit donation with specified payment gateway"""
+        if gateway.lower() == "sbiepay":
+            return await self.submit_donation_with_sbiepay(donation_request)
+        else:
+            return await self.submit_donation_with_phonepe(donation_request)
+
     async def create_donation(
         self,
         full_name: str,
@@ -82,6 +133,7 @@ class DonationService(AbstractService):
         amount: float,
         need_g80_certificate: bool,
         confirmed_terms: bool,
+        payment_provider: str = "phonepe",
     ):
         order_id = self.payment_service.generate_unique_string(prefix="SK")
         donation = Donation(
@@ -93,6 +145,7 @@ class DonationService(AbstractService):
             need_g80_certificate=need_g80_certificate,
             confirmed_terms=confirmed_terms,
             status=DonationStatus.PENDING.value,
+            payment_provider=payment_provider,
         )
         self.session.add(donation)
         await self.session.commit()
@@ -167,33 +220,36 @@ class DonationService(AbstractService):
 
         return donation, phonepe_log
 
-    async def get_donation_details(
-        self, donation_id: str | None = None, order_id: str | None = None
-    ):
-        if donation_id is not None:
-            donation = await self.session.scalar(
-                select(Donation)
-                .where(Donation.id == donation_id)
-                .options(joinedload(Donation.g80_certificate))
-            )
-        elif order_id is not None:
-            donation = await self.session.scalar(
-                select(Donation)
-                .where(Donation.order_id == order_id)
-                .options(joinedload(Donation.g80_certificate))
-            )
-        else:
-            raise InvalidRequestException(
-                "Either donation_id or order_id must be provided."
-            )
-        if not donation:
-            raise InvalidRequestException("Donation not found.")
-        payment = await self.session.scalar(
-            select(PhonePePaymentLog).where(
-                PhonePePaymentLog.merchant_order_id == donation.order_id
-            )
+    async def get_donation_details(self, donation_id: str):
+        """Get detailed donation information"""
+        donation = await self.session.scalar(
+            select(Donation)
+            .options(joinedload(Donation.g80_certificate))
+            .where(Donation.id == donation_id)
         )
-        return donation, payment
+
+        if not donation:
+            return None, None
+
+        if donation.payment_provider == "phonepe":
+
+            # Try to get payment details
+            phonepe_log = await self.session.scalar(
+                select(PhonePePaymentLog).where(
+                    PhonePePaymentLog.merchant_order_id == donation.order_id
+                )
+            )
+
+            if phonepe_log:
+                return donation, phonepe_log
+        elif donation.payment_provider == "sbiepay":
+            sbiepay_log = await self.session.scalar(
+                select(SbiePayPaymentLog).where(
+                    SbiePayPaymentLog.merchant_order_id == donation.order_id
+                )
+            )
+
+            return donation, sbiepay_log
 
     async def total_donation_amount(
         self, from_datetime: datetime | None = None, to_datetime: datetime | None = None

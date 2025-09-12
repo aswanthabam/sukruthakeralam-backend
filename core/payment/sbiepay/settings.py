@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class SbiePaySettings(BaseSettings):
@@ -7,6 +7,8 @@ class SbiePaySettings(BaseSettings):
     Values can be loaded from environment variables or a .env file.
     """
 
+    model_config = SettingsConfigDict(case_sensitive=True, env_prefix="APP_")
+    DEBUG: bool = False
     SBIEPAY_MERCHANT_ID: str
     SBIEPAY_ENCRYPTION_KEY: str
     SBIEPAY_AGGREGATOR_ID: str = "SBIEPAY"
