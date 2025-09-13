@@ -94,17 +94,15 @@ async def get_donation_status_endpoint(
     return {
         "order_id": donation.order_id,
         "full_name": donation.full_name,
-        "email": donation.email,
-        "contact_number": donation.contact_number,
         "amount": donation.amount,
         "status": donation.status,
         "need_g80_certificate": donation.need_g80_certificate,
-        "confirmed_terms": donation.confirmed_terms,
-        "created_at": donation.created_at.isoformat(),
-        "updated_at": donation.updated_at.isoformat(),
-        "payment_gateway": payment_gateway,
-        "payment_status": payment_status,
-        "payment_expired": is_payment_url_expired,
+        "payment_details": {
+            "payment_gateway": payment_gateway,
+            "payment_status": payment_status,
+            "sbiepay_ref_id": getattr(payment_log, "sbiepay_ref_id", None),
+            "phonepe_order_id": getattr(payment_log, "phonepe_order_id", None),
+        },
     }
 
 
