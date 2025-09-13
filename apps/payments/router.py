@@ -22,7 +22,7 @@ async def phonepe_redirect(
 ):
     payment_log = await payment_service.get_payment_status(order_id)
     redirect_url = settings.FRONTEND_DOMAIN + "/thankyou?order_id=" + order_id
-    return RedirectResponse(url=redirect_url)
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.get("/payment_status/{order_id}")
@@ -64,14 +64,14 @@ async def sbiepay_success(request: Request, payment_service: PaymentServiceDepen
 
         # Redirect to frontend with success status
         redirect_url = f"{settings.FRONTEND_DOMAIN}/thankyou?order_id={payment_log.merchant_order_id}&status=success"
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=redirect_url, status_code=303)
 
     except Exception as e:
         logger.error(f"Error processing SBIePay success callback: {str(e)}")
         redirect_url = (
             f"{settings.FRONTEND_DOMAIN}/thankyou?message=Payment processing failed"
         )
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.post("/payment/sbiepay_failure", description="SBIePay Failure Callback")
@@ -95,14 +95,14 @@ async def sbiepay_failure(request: Request, payment_service: PaymentServiceDepen
         redirect_url = (
             f"{settings.FRONTEND_DOMAIN}/thankyou?order_id={order_id}&status=failed"
         )
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=redirect_url, status_code=303)
 
         # Redirect to frontend with failure status
 
     except Exception as e:
         logger.error(f"Error processing SBIePay failure callback: {str(e)}")
         redirect_url = f"{settings.FRONTEND_DOMAIN}/thankyou?message=Payment failed"
-        return RedirectResponse(url=redirect_url)
+        return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.post(
