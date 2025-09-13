@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 from sqlalchemy.orm import joinedload
 
 from apps.payments.models import PhonePePaymentLog, SbiePayPaymentLog
-from apps.payments.schema import PhonePePaymentStatus
+from apps.payments.schema import PhonePePaymentStatus, SbiePayPaymentStatus
 from apps.payments.service import PaymentServiceDependency
 from core.database.sqlalchamey.core import SessionDep
 from core.exception.request import InvalidRequestException
@@ -201,24 +201,47 @@ class DonationService(AbstractService):
         donation = await self.session.scalar(
             select(Donation).where(Donation.order_id == order_id)
         )
-        phonepe_log = await self.session.scalar(
-            select(PhonePePaymentLog).where(
-                PhonePePaymentLog.merchant_order_id == order_id
-            )
-        )
-        if donation and phonepe_log:
-            if donation.status != DonationStatus.COMPLETED.value:
-                if phonepe_log.payment_status == PhonePePaymentStatus.COMPLETED.value:
-                    donation.status = DonationStatus.COMPLETED.value
-                    await self.session.commit()
-                    await self.session.refresh(donation)
-                else:
-                    phonepe_log = await self.payment_service.get_payment_status(
-                        order_id
-                    )
-                    await self.session.refresh(donation)
 
-        return donation, phonepe_log
+        if donation.payment_provider == "phonepe":
+            phonepe_log = await self.session.scalar(
+                select(PhonePePaymentLog).where(
+                    PhonePePaymentLog.merchant_order_id == order_id
+                )
+            )
+            if donation and phonepe_log:
+                if donation.status != DonationStatus.COMPLETED.value:
+                    if (
+                        phonepe_log.payment_status
+                        == PhonePePaymentStatus.COMPLETED.value
+                    ):
+                        donation.status = DonationStatus.COMPLETED.value
+                        await self.session.commit()
+                        await self.session.refresh(donation)
+                    else:
+                        phonepe_log = await self.payment_service.get_payment_status(
+                            order_id
+                        )
+                        await self.session.refresh(donation)
+        elif donation.payment_provider == "sbiepay":
+            sbiepay_log = await self.session.scalar(
+                select(SbiePayPaymentLog).where(
+                    SbiePayPaymentLog.merchant_order_id == order_id
+                )
+            )
+            if donation and sbiepay_log:
+                if donation.status != DonationStatus.COMPLETED.value:
+                    if sbiepay_log.payment_status == SbiePayPaymentStatus.SUCCESS.value:
+                        donation.status = DonationStatus.COMPLETED.value
+                        await self.session.commit()
+                        await self.session.refresh(donation)
+                    else:
+                        sbiepay_log = await self.payment_service.get_payment_status(
+                            order_id
+                        )
+                        await self.session.refresh(donation)
+            return donation, sbiepay_log
+
+        return donation, None
 
     async def get_donation_details(self, donation_id: str):
         """Get detailed donation information"""
