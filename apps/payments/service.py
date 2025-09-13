@@ -58,7 +58,7 @@ class PaymentService(AbstractService):
         await self.session.refresh(payment_log)
         return payment_log
 
-    async def get_payment_status(self, order_id: str):
+    async def get_phonepe_payment_status(self, order_id: str):
         phonepe_payment_log = await self.session.scalar(
             select(PhonePePaymentLog).where(
                 PhonePePaymentLog.merchant_order_id == order_id
@@ -174,6 +174,9 @@ class PaymentService(AbstractService):
             payment_log.pay_mode = parsed_data.pay_mode
             payment_log.reason_message = parsed_data.reason_message
             payment_log.other_details = parsed_data.other_details
+            payment_log.bank_code = parsed_data.bank_code
+            payment_log.bank_reference_number = parsed_data.bank_reference_number
+            payment_log.transaction_date = parsed_data.transaction_date
 
             # Map transaction status to our payment status
             if parsed_data.transaction_status == "SUCCESS":
@@ -257,32 +260,21 @@ class PaymentService(AbstractService):
         if payment_log.sbiepay_ref_id:
             return await self.verify_sbiepay_transaction(order_id)
 
-        # For new payments without ATRN, just return the current status
         return payment_log
 
     # Unified method for getting payment status (works with both gateways)
     async def get_payment_status(self, order_id: str):
         """Get payment status from either PhonePe or SBIePay based on what's available"""
         # First check PhonePe
-        phonepe_log = await self.session.scalar(
-            select(PhonePePaymentLog).where(
-                PhonePePaymentLog.merchant_order_id == order_id
-            )
+        donation = await self.session.scalar(
+            select(Donation).where(Donation.order_id == order_id)
         )
-
-        if phonepe_log:
+        if not donation:
+            raise InvalidRequestException("Donation details not found")
+        if donation.payment_provider == "phonepe":
             return await self.get_phonepe_payment_status(order_id)
-
-        # Then check SBIePay
-        sbiepay_log = await self.session.scalar(
-            select(SbiePayPaymentLog).where(
-                SbiePayPaymentLog.merchant_order_id == order_id
-            )
-        )
-
-        if sbiepay_log:
+        elif donation.payment_provider == "sbiepay":
             return await self.get_sbiepay_payment_status(order_id)
-
         raise InvalidRequestException("Payment information not found")
 
     async def _update_donation_status(self, order_id: str, payment_status: str):

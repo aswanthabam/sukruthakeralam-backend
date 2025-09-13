@@ -21,6 +21,22 @@ class SbiePayResponseData(BaseModel):
     pay_mode: Optional[str] = None
     other_details: Optional[str] = None
     reason_message: Optional[str] = None
+    bank_code: Optional[str] = None
+    bank_reference_number: Optional[str] = None
+    transaction_date: Optional[str] = None
+    country: Optional[str] = None
+    cin: Optional[str] = None
+    merchent_id: Optional[str] = None
+    total_fee_gst: Optional[str] = None
+    ref1: Optional[str] = None
+    ref2: Optional[str] = None
+    ref3: Optional[str] = None
+    ref4: Optional[str] = None
+    ref5: Optional[str] = None
+    ref6: Optional[str] = None
+    ref7: Optional[str] = None
+    ref8: Optional[str] = None
+    ref9: Optional[str] = None
 
     class Config:
         validate_assignment = True

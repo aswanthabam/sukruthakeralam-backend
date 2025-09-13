@@ -9,6 +9,7 @@ from apps.donation.schema import (
     Form80SubmissionListResponse,
 )
 from apps.donation.service import DonationServiceDependency
+from apps.payments.models import PhonePePaymentLog, SbiePayPaymentLog
 from apps.payments.schema import PhonePePaymentStatus
 from core.exception.request import InvalidRequestException
 from core.fastapi.response.pagination import (
@@ -61,46 +62,49 @@ async def create_donation_endpoint(
 @router.get("/status/{order_id}")
 async def get_donation_status_endpoint(
     order_id: str, donation_service: "DonationServiceDependency"
-) -> DonationStatusResponse:
-    donation, phonepe_log = await donation_service.get_donation_status(
+):
+    """Get donation status - works with both PhonePe and SBI ePay"""
+    donation, payment_log = await donation_service.get_donation_status(
         order_id=order_id
     )
+
     if not donation:
         raise InvalidRequestException(message="Donation details not found")
+
     current_time = datetime.now(timezone.utc)
-    is_payment_url_expired = (
-        (
-            phonepe_log.created_at
+
+    # Handle payment URL expiry based on payment gateway type
+    is_payment_url_expired = True
+    payment_gateway = "unknown"
+    payment_status = "unknown"
+
+    if isinstance(payment_log, PhonePePaymentLog):
+        payment_gateway = "phonepe"
+        payment_status = payment_log.payment_status
+        is_payment_url_expired = (
+            payment_log.created_at
             + timedelta(seconds=settings.PHONEPE_PAYMENT_EXPIRY_SECONDS)
-        )
-        < current_time
-        if phonepe_log
-        else True
-    )
+        ) < current_time
+
+    elif isinstance(payment_log, SbiePayPaymentLog):
+        payment_gateway = "sbiepay"
+        payment_status = payment_log.payment_status
+        is_payment_url_expired = True
+
     return {
         "order_id": donation.order_id,
         "full_name": donation.full_name,
+        "email": donation.email,
+        "contact_number": donation.contact_number,
         "amount": donation.amount,
         "status": donation.status,
         "need_g80_certificate": donation.need_g80_certificate,
-        "payment_details": (
-            {
-                "payment_status": phonepe_log.payment_status,
-                "merchant_order_id": phonepe_log.merchant_order_id,
-                "phonepe_order_id": phonepe_log.phonepe_order_id,
-                "is_payment_url_expired": is_payment_url_expired,
-                "payment_url": (
-                    phonepe_log.redirect_url
-                    if phonepe_log
-                    and phonepe_log.payment_status == PhonePePaymentStatus.PENDING.value
-                    and not is_payment_url_expired
-                    else None
-                ),
-            }
-            if phonepe_log
-            else None
-        ),
-        "donation": donation,
+        "confirmed_terms": donation.confirmed_terms,
+        "created_at": donation.created_at.isoformat(),
+        "updated_at": donation.updated_at.isoformat(),
+        "payment_gateway": payment_gateway,
+        "payment_status": payment_status,
+        "payment_expired": is_payment_url_expired,
     }
 
 
@@ -205,15 +209,42 @@ async def get_donation_details_endpoint(
     auth: "AuthDependency",
     donation_id: str,
 ):
+    """Get detailed donation information (admin only)"""
     donation, payment = await donation_service.get_donation_details(
         donation_id=donation_id
     )
     if not donation:
         return {"error": "Donation not found"}, 404
-    if isinstance(payment.phonepe_payment_details, list):
-        payment_details = payment.phonepe_payment_details[0]
-    else:
-        payment_details = payment.phonepe_payment_details
+
+    # Handle different payment gateway types
+    payment_details = {}
+    if isinstance(payment, PhonePePaymentLog):
+        if isinstance(payment.phonepe_payment_details, list):
+            payment_data = payment.phonepe_payment_details[0]
+        else:
+            payment_data = payment.phonepe_payment_details
+
+        payment_details = {
+            "gateway": "phonepe",
+            "payment_status": payment.payment_status,
+            "merchant_order_id": payment.merchant_order_id,
+            "phonepe_order_id": payment.phonepe_order_id,
+            "payment_mode": payment_data.get("paymentMode") if payment_data else None,
+            "redirect_url": payment.redirect_url,
+        }
+    elif isinstance(payment, SbiePayPaymentLog):
+        payment_details = {
+            "gateway": "sbiepay",
+            "payment_status": payment.payment_status,
+            "merchant_order_id": payment.merchant_order_id,
+            "sbiepay_ref_id": payment.sbiepay_ref_id,
+            "pay_mode": payment.pay_mode,
+            "bank_code": payment.bank_code,
+            "bank_reference_number": payment.bank_reference_number,
+            "transaction_date": payment.transaction_date,
+            "reason_message": payment.reason_message,
+        }
+
     return {
         "order_id": donation.order_id,
         "full_name": donation.full_name,
@@ -225,13 +256,6 @@ async def get_donation_details_endpoint(
         "g80_certificate_id": (
             donation.g80_certificate.id if donation.g80_certificate else None
         ),
-        "payment_details": {
-            "payment_status": payment.payment_status,
-            "merchant_order_id": payment.merchant_order_id,
-            "phonepe_order_id": payment.phonepe_order_id,
-            "payment_mode": (
-                payment_details.get("paymentMode") if payment_details else None
-            ),
-        },
+        "payment_details": payment_details,
         "donation": donation,
     }

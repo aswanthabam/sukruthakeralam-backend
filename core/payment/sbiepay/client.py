@@ -198,6 +198,22 @@ class SbiePayClient:
                 pay_mode=response_fields[5],
                 other_details=response_fields[6],
                 reason_message=response_fields[7],
+                bank_code=response_fields[8],
+                bank_reference_number=response_fields[9],
+                transaction_date=response_fields[10],
+                country=response_fields[11],
+                cin=response_fields[12],
+                merchent_id=response_fields[13],
+                total_fee_gst=response_fields[14],
+                ref1=response_fields[15] if len(response_fields) > 15 else None,
+                ref2=response_fields[16] if len(response_fields) > 16 else None,
+                ref3=response_fields[17] if len(response_fields) > 17 else None,
+                ref4=response_fields[18] if len(response_fields) > 18 else None,
+                ref5=response_fields[19] if len(response_fields) > 19 else None,
+                ref6=response_fields[20] if len(response_fields) > 20 else None,
+                ref7=response_fields[21] if len(response_fields) > 21 else None,
+                ref8=response_fields[22] if len(response_fields) > 22 else None,
+                ref9=response_fields[23] if len(response_fields) > 23 else None,
             )
 
             self.logger.info(
