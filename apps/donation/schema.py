@@ -58,7 +58,7 @@ class DonationRequest(BaseModel):
     contact_number: Annotated[
         str,
         StringConstraints(
-            min_length=2, max_length=100, pattern=r"^\+?[0-9]{1,4}[0-9]{5,14}$"
+            min_length=5, max_length=25, pattern=r"^\+?[0-9]{1,4}[0-9]{5,14}$"
         ),
     ]
     amount: float
