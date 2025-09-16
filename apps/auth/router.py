@@ -13,7 +13,9 @@ router = APIRouter(
 @router.post("/login")
 async def login(
     auth_service: AuthServiceDependency,
-    username: str = Body(..., min_length=5, max_length=100, regex=r"^[A-Za-z0-9_.-]+$"),
+    username: str = Body(
+        ..., min_length=5, max_length=100, regex=r"^[A-Za-z0-9@_.-]+$"
+    ),
     password: str = Body(..., min_length=5, max_length=100),
 ):
     token = await auth_service.authenticate_and_create_jwt(username, password)
