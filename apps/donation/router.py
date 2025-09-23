@@ -118,28 +118,28 @@ async def get_total_donation_amount_endpoint(
     return {"total_donation_amount": total_amount}
 
 
-@router.get("/total_count")
-async def get_total_donation_count_endpoint(
-    donation_service: "DonationServiceDependency",
-    from_datetime: datetime | None = None,
-    to_datetime: datetime | None = None,
-):
-    total_count = await donation_service.total_donation_count(
-        from_datetime=from_datetime, to_datetime=to_datetime
-    )
-    return {"total_donation_count": total_count}
+# @router.get("/total_count")
+# async def get_total_donation_count_endpoint(
+#     donation_service: "DonationServiceDependency",
+#     from_datetime: datetime | None = None,
+#     to_datetime: datetime | None = None,
+# ):
+#     total_count = await donation_service.total_donation_count(
+#         from_datetime=from_datetime, to_datetime=to_datetime
+#     )
+#     return {"total_donation_count": total_count}
 
 
-@router.get("/total_form80_requests")
-async def get_total_form80_requests_endpoint(
-    donation_service: "DonationServiceDependency",
-    from_datetime: datetime | None = None,
-    to_datetime: datetime | None = None,
-):
-    total_count = await donation_service.total_form80_requests(
-        from_datetime=from_datetime, to_datetime=to_datetime
-    )
-    return {"total_form80_requests": total_count}
+# @router.get("/total_form80_requests")
+# async def get_total_form80_requests_endpoint(
+#     donation_service: "DonationServiceDependency",
+#     from_datetime: datetime | None = None,
+#     to_datetime: datetime | None = None,
+# ):
+#     total_count = await donation_service.total_form80_requests(
+#         from_datetime=from_datetime, to_datetime=to_datetime
+#     )
+#     return {"total_form80_requests": total_count}
 
 
 @router.get("/list_donations")
