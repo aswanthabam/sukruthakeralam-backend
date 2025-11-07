@@ -1,0 +1,31 @@
+Thank You for Your Generous Donation!
+
+Dear {{ full_name }},
+
+We are deeply grateful for your generous donation to {{ organization_name|default("Sukrutha Keralam") }}. Your support makes a significant difference in helping us achieve our mission.
+
+Donation Details:
+==================
+Order ID: {{ order_id }}
+Donation Amount: ₹{{ amount }}
+Payment Status: {{ status|upper }}
+Date: {{ donation_date }}
+{% if payment_mode %}Payment Mode: {{ payment_mode }}{% endif %}
+{% if need_g80_certificate %}80G Certificate: Requested - Will be processed soon{% endif %}
+
+Your contribution will help us continue our work and make a positive impact in the community. Every donation, regardless of size, brings us closer to our goals.
+
+{% if need_g80_certificate %}
+Note: Your request for an 80G tax exemption certificate has been received. We will process it and send you the certificate via email within 7-10 business days.
+{% endif %}
+
+If you have any questions about your donation or our work, please don't hesitate to contact us at {{ contact_email|default("support@sukruthakeralam.org") }}.
+
+Once again, thank you for your kindness and generosity!
+
+With gratitude,
+{{ organization_name|default("Sukrutha Keralam") }} Team
+
+---
+This is an automated email. Please do not reply to this email.
+© {{ year|default("2025") }} {{ organization_name|default("Sukrutha Keralam") }}. All rights reserved.
