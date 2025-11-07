@@ -3,7 +3,10 @@ from typing import Annotated
 from fastapi.params import Depends
 import jwt
 from datetime import datetime, timedelta, timezone
+import secrets
+from sqlalchemy import select
 
+from apps.auth.models import AdminAccessTokens
 from core.database.sqlalchamey.core import SessionDep
 from core.exception.request import InvalidRequestException
 from core.fastapi.dependency.service_dependency import AbstractService
@@ -26,28 +29,27 @@ class AuthService(AbstractService):
             return True
         return False
 
-    def authenticate_and_create_jwt(self, username: str, password: str):
+    async def authenticate_and_create_jwt(self, username: str, password: str):
         if not self.password_authenticate(username, password):
             raise InvalidRequestException("unauthorized")
 
-        secret_key = settings.SECRET_KEY
-        payload = {
-            "username": username,
-            "exp": datetime.now(timezone.utc) + timedelta(days=30),
-        }
-        token = jwt.encode(payload, secret_key, algorithm="HS256")
-        return token
+        access_token = secrets.token_urlsafe(32)
+        token = AdminAccessTokens(
+            token=access_token,
+        )
+        self.session.add(token)
+        await self.session.commit()
+        return access_token
 
-    def verify_jwt(self, token: str):
-        with open("credentials.json") as f:
-            credentials = json.load(f)
-        secret_key = settings.SECRET_KEY
-        try:
-            payload = jwt.decode(token, secret_key, algorithms=["HS256"], verify=True)
-            if payload.get("username") in credentials:
-                return True
-        except Exception:
-            return False
+    async def invalidate_jwt(self, token: str):
+        query = await self.session.execute(
+            select(AdminAccessTokens).where(AdminAccessTokens.token == token)
+        )
+        token_entry = query.scalars().first()
+        if token_entry:
+            await self.session.delete(token_entry)
+            await self.session.commit()
+            return True
         return False
 
 

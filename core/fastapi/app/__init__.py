@@ -32,8 +32,16 @@ async def lifespan(app: FastAPI):
     print("AVC CORE:: Cooked !")
 
 
-def create_app():
-    app = FastAPI(lifespan=lifespan, default_response_class=CustomORJSONResponse)
+def create_app(
+    enable_docs: bool = True,
+):
+    app = FastAPI(
+        lifespan=lifespan,
+        default_response_class=CustomORJSONResponse,
+        docs_url="/docs" if enable_docs else None,
+        redoc_url="/redoc" if enable_docs else None,
+        openapi_url="/openapi.json" if enable_docs else None,
+    )
 
     router = autoload_routers("apps")
 

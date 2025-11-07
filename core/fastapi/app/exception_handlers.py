@@ -1,6 +1,6 @@
 import traceback
 import uuid
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
@@ -10,6 +10,11 @@ from core.exception.core import AbstractException
 
 
 async def abstract_exception_handler(request: Request, exc: AbstractException):
+    if isinstance(exc, HTTPException):
+        return ORJSONResponse(
+            {"message": exc.detail, "error_code": exc.status_code},
+            status_code=exc.status_code,
+        )
     return ORJSONResponse(exc.to_json(), status_code=exc.status_code)
 
 

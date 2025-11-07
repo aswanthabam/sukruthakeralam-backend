@@ -27,6 +27,9 @@ class Donation(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     status = Column(
         String(50), nullable=False, default=DonationStatus.PENDING.value, index=True
     )
+    payment_provider = Column(
+        String(50), nullable=False, default="phonepe", server_default="phonepe"
+    )
 
     g80_certificate = relationship(
         "FormG80Submission",

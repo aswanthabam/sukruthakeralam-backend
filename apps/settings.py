@@ -22,6 +22,13 @@ class CoreSettings(BaseSettings):
     BACKEND_DOMAIN: str
     FRONTEND_DOMAIN: str
 
+    # AWS SES Configuration
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
+    AWS_REGION: str = "us-east-1"
+    SES_SENDER_EMAIL: str
+    EMAIL_TEMPLATES_DIR: str = "templates/emails"
+
     @property
     def cors_origins(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, str):
