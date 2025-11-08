@@ -71,14 +71,9 @@
             color: #666;
             font-size: 14px;
         }
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #4CAF50;
-            color: white;
+        a.footer-link {
+            color: #4CAF50;
             text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
         }
     </style>
 </head>
@@ -91,7 +86,7 @@
         <div class="content">
             <p>Dear {{ full_name }},</p>
             
-            <p>We are deeply grateful for your generous donation to <strong>{{ organization_name|default("Sukrutha Keralam") }}</strong>. Your support makes a significant difference in helping us achieve our mission.</p>
+            <p>We sincerely thank you for your valuable contribution to <strong>{{ organization_name|default("Sukrutha Keralam") }}</strong>. Your support plays a crucial role in transforming lives across Kerala — helping us reach communities, uplift families, and create sustainable change.</p>
             
             <div class="donation-details">
                 <h2>Donation Details</h2>
@@ -131,18 +126,22 @@
                 {% endif %}
             </div>
             
-            <p>Your contribution will help us continue our work and make a positive impact in the community. Every donation, regardless of size, brings us closer to our goals.</p>
+            <p>With your donation, millions of lives in Kerala will be benefitted, and together we are building a better, brighter, and more compassionate tomorrow.</p>
             
             {% if need_g80_certificate %}
             <p><strong>Note:</strong> Your request for an 80G tax exemption certificate has been received. We will process it and send you the certificate via email within 7-10 business days.</p>
+            {% else %}
+            <p><strong>Tax Exemption (80G Certificate):</strong> If you require a Form 80G certificate for tax exemption, please reach out to us at <strong>{{ contact_email|default("support@sukruthakeralam.com") }}</strong> with your transaction details.</p>
             {% endif %}
             
-            <p>If you have any questions about your donation or our work, please don't hesitate to contact us at {{ contact_email|default("support@sukruthakeralam.org") }}.</p>
+            <p>If you have any other questions about your donation or our work, please don't hesitate to contact us.</p>
             
-            <p>Once again, thank you for your kindness and generosity!</p>
+            <p>Thank you once again for believing in our mission and being part of Sukrutha Keralam’s journey toward a better Kerala.</p>
             
-            <p>With gratitude,<br>
-            <strong>{{ organization_name|default("Sukrutha Keralam") }} Team</strong></p>
+            <p>Warm regards,<br>
+            <strong>The {{ organization_name|default("Sukrutha Keralam") }} Team</strong><br>
+            <a href="https://www.sukruthakeralam.com" class="footer-link">www.sukruthakeralam.com</a>
+            </p>
         </div>
         
         <div class="footer">
