@@ -19,7 +19,7 @@ class Donation(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     )
     order_id = Column(String(50), nullable=False, unique=True, index=True)
     full_name = Column(String(255), nullable=False)
-    email = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True, default=None)
     contact_number = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
     need_g80_certificate = Column(Boolean, default=False, nullable=False, index=True)
