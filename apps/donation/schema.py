@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Annotated
-from pydantic import BaseModel, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from enum import Enum as PyEnum
 from pydantic.networks import validate_email
 
@@ -54,7 +54,7 @@ class DonationRequest(BaseModel):
             min_length=2, max_length=100, pattern=r"^[A-Za-z][A-Za-z .'-]*[A-Za-z]$"
         ),
     ]
-    email: str
+    email: str | None = Field(None)
     contact_number: Annotated[
         str,
         StringConstraints(
@@ -68,8 +68,9 @@ class DonationRequest(BaseModel):
 
     @field_validator("email", mode="before")
     def validate_email(cls, value):
-        _, email = validate_email(value)
-        return email
+        if value:
+            _, value = validate_email(value)
+        return value
 
     @field_validator("contact_number", mode="before")
     def preprocess_contact_number(cls, value):
@@ -101,7 +102,7 @@ class DonationResponse(BaseModel):
     id: str
     order_id: str
     full_name: str
-    email: str
+    email: str | None
     contact_number: str
     amount: float
     need_g80_certificate: bool
@@ -137,7 +138,7 @@ class DonationListResponse(BaseModel):
     id: str
     order_id: str
     full_name: str
-    email: str
+    email: str | None
     amount: float
     status: str
     need_g80_certificate: bool

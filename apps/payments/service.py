@@ -367,10 +367,11 @@ class PaymentService(AbstractService):
             payment_log: Payment log object (PhonePePaymentLog or SbiePayPaymentLog)
         """
         try:
-            await self._send_donation_thank_you_email(donation, payment_log)
-            logger.info(
-                f"Thank you email sent successfully for donation: {donation.id}, order: {donation.order_id}"
-            )
+            if donation.email:
+                await self._send_donation_thank_you_email(donation, payment_log)
+                logger.info(
+                    f"Thank you email sent successfully for donation: {donation.id}, order: {donation.order_id}"
+                )
         except Exception as e:
             # Log the error but don't raise it
             # This ensures payment processing continues even if email fails
@@ -401,6 +402,8 @@ class PaymentService(AbstractService):
         Raises:
             Exception: If email sending fails (caught by _send_donation_thank_you_email_safe)
         """
+        if not donation.email:
+            return
         # Extract payment mode and details from payment log
         payment_mode = None
         payment_details = None
@@ -482,6 +485,8 @@ class PaymentService(AbstractService):
             donation = await self.session.scalar(
                 select(Donation).where(Donation.id == donation_id)
             )
+            if not donation.email:
+                return True
 
             if not donation:
                 logger.error(f"Donation not found: {donation_id}")
