@@ -34,6 +34,7 @@ import {
   ArrowUpDown,
   Loader2,
   RefreshCw,
+  RefreshCcw,
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { LogoutButton } from "@/components/logout-button";
@@ -133,6 +134,7 @@ export default function PaymentsPage() {
     useState<DonationDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [refreshDisabled, setRefreshDisabled] = useState(false);
 
   const fetchDonations = useCallback(
     async (offset = 0) => {
@@ -452,8 +454,30 @@ export default function PaymentsPage() {
                                   <Eye className="h-4 w-4" />
                                 )}
                               </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="h-4 w-4" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={
+                                  donation.status == "completed" ||
+                                  refreshDisabled
+                                }
+                                onClick={async () => {
+                                  setRefreshDisabled(true);
+                                  axiosInstance
+                                    .get(
+                                      "/api/donation/status/" +
+                                        donation.order_id
+                                    )
+                                    .then((res) => {
+                                      fetchDonations(pagination.offset);
+                                      setRefreshDisabled(false);
+                                    })
+                                    .catch((err) => {
+                                      setRefreshDisabled(false);
+                                    });
+                                }}
+                              >
+                                <RefreshCcw className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
