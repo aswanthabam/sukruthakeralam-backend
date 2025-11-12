@@ -61,12 +61,26 @@ interface DonationDetails {
   status: string;
   need_g80_certificate: boolean;
   g80_certificate_id?: string;
-  payment_details: {
-    payment_status: string;
-    merchant_order_id: string;
-    phonepe_order_id: string;
-    payment_mode: string;
-  };
+  payment_details:
+    | {
+        gateway: "phonepe";
+        payment_status: string;
+        merchant_order_id: string;
+        phonepe_order_id: string;
+        payment_mode?: string | null;
+        redirect_url?: string | null;
+      }
+    | {
+        gateway: "sbiepay";
+        payment_status: string;
+        merchant_order_id: string;
+        sbiepay_ref_id?: string | null;
+        pay_mode?: string | null;
+        bank_code?: string | null;
+        bank_reference_number?: string | null;
+        transaction_date?: string | null;
+        reason_message?: string | null;
+      };
   donation: {
     full_name: string;
     contact_number: string;
@@ -480,7 +494,15 @@ export default function PaymentsPage() {
         </Card>
 
         <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent
+            style={{
+              width: "90vw",
+              maxWidth: "none",
+              height: "90vh",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Donation Details</DialogTitle>
             </DialogHeader>
@@ -505,11 +527,15 @@ export default function PaymentsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="font-medium">Email:</span>
-                        <span>{selectedDonation.email}</span>
+                        <span className="break-all">
+                          {selectedDonation.email}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="font-medium">Contact:</span>
-                        <span>{selectedDonation.contact_number}</span>
+                        <span className="break-all">
+                          {selectedDonation.contact_number}
+                        </span>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -552,45 +578,123 @@ export default function PaymentsPage() {
                 </div>
 
                 {/* Payment Details */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">
-                    Payment Details
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Payment Status:</span>
-                        <Badge
-                          className={getStatusColor(
-                            selectedDonation.payment_details.payment_status
-                          )}
-                        >
-                          {selectedDonation.payment_details.payment_status}
-                        </Badge>
+                {selectedDonation.payment_details.gateway == "phonepe" ? (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">
+                      Payment Details
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Payment Status:</span>
+                          <Badge
+                            className={getStatusColor(
+                              selectedDonation.payment_details.payment_status
+                            )}
+                          >
+                            {selectedDonation.payment_details.payment_status}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Payment Mode:</span>
+                          <span className="break-all">
+                            {selectedDonation.payment_details.payment_mode}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Payment Mode:</span>
-                        <span>
-                          {selectedDonation.payment_details.payment_mode}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Merchant Order ID:</span>
-                        <span className="font-mono text-sm">
-                          {selectedDonation.payment_details.merchant_order_id}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">PhonePe Order ID:</span>
-                        <span className="font-mono text-sm">
-                          {selectedDonation.payment_details.phonepe_order_id}
-                        </span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">
+                            Merchant Order ID:
+                          </span>
+                          <span className="font-mono text-sm break-all">
+                            {selectedDonation.payment_details.merchant_order_id}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">PhonePe Order ID:</span>
+                          <span className="font-mono text-sm break-all">
+                            {selectedDonation.payment_details.phonepe_order_id}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : selectedDonation.payment_details.gateway == "sbiepay" ? (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">
+                      Payment Details
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Payment Status:</span>
+                          <Badge
+                            className={getStatusColor(
+                              selectedDonation.payment_details.payment_status
+                            )}
+                          >
+                            {selectedDonation.payment_details.payment_status}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Pay Mode:</span>
+                          <span className="break-all">
+                            {selectedDonation.payment_details.pay_mode}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Bank Code:</span>
+                          <span className="break-all">
+                            {selectedDonation.payment_details.bank_code}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Reason Message:</span>
+                          <span className="break-all">
+                            {selectedDonation.payment_details.reason_message}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">
+                            Merchant Order ID:
+                          </span>
+                          <span className="font-mono text-sm break-all">
+                            {selectedDonation.payment_details.merchant_order_id}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">SBIePay Ref ID:</span>
+                          <span className="font-mono text-sm break-all">
+                            {selectedDonation.payment_details.sbiepay_ref_id}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">
+                            Bank Reference No.:
+                          </span>
+                          <span className="font-mono text-sm break-all">
+                            {
+                              selectedDonation.payment_details
+                                .bank_reference_number
+                            }
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Transaction Date:</span>
+                          <span className="font-mono text-sm break-all">
+                            {selectedDonation.payment_details.transaction_date}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <></>
+                )}
 
                 {/* G80 Certificate Details */}
                 {selectedDonation.donation.g80_certificate && (
