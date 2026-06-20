@@ -1,0 +1,263 @@
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Body, Request
+
+from apps.auth.dependency import AuthDependency
+from apps.donation.schema import (
+    DonationListResponse,
+    DonationRequest,
+    DonationStatusResponse,
+    Form80SubmissionListResponse,
+)
+from apps.donation.service import DonationServiceDependency
+from apps.payments.models import PhonePePaymentLog, SbiePayPaymentLog
+from apps.payments.schema import PhonePePaymentStatus
+from core.exception.request import InvalidRequestException
+from core.fastapi.response.pagination import (
+    PaginatedResponse,
+    PaginationParams,
+    paginated_response,
+)
+from apps.settings import settings
+
+router = APIRouter(
+    prefix="/donation",
+)
+
+
+@router.post("/donate")
+async def create_donation_endpoint(
+    donation: DonationRequest,
+    donation_service: "DonationServiceDependency",
+):
+    gateway = "sbiepay"
+    """Create a donation with specified payment gateway"""
+    if gateway.lower() == "sbiepay":
+        # SBI ePay Integration
+        payment_data = await donation_service.submit_donation_with_sbiepay(
+            donation_request=donation
+        )
+
+        return {
+            "gateway": "sbiepay",
+            "payment_form_data": payment_data["form_data"],
+            "gateway_url": payment_data["gateway_url"],
+            "merchant_order_id": payment_data["order_id"],
+            "amount": payment_data["amount"],
+            "instructions": "Submit the form data to gateway_url to complete payment",
+        }
+    else:
+        # PhonePe Integration (existing)
+        payment_log = await donation_service.submit_donation_with_phonepe(
+            donation_request=donation
+        )
+
+        return {
+            "gateway": "phonepe",
+            "payment_url": payment_log.redirect_url,
+            "merchant_order_id": payment_log.merchant_order_id,
+            "amount": payment_log.amount,
+        }
+
+
+@router.get("/status/{order_id}")
+async def get_donation_status_endpoint(
+    order_id: str, donation_service: "DonationServiceDependency"
+):
+    """Get donation status - works with both PhonePe and SBI ePay"""
+    donation, payment_log = await donation_service.get_donation_status(
+        order_id=order_id
+    )
+
+    if not donation:
+        raise InvalidRequestException(message="Donation details not found")
+
+    current_time = datetime.now(timezone.utc)
+
+    # Handle payment URL expiry based on payment gateway type
+    is_payment_url_expired = True
+    payment_gateway = "unknown"
+    payment_status = "unknown"
+
+    if isinstance(payment_log, PhonePePaymentLog):
+        payment_gateway = "phonepe"
+        payment_status = payment_log.payment_status
+        is_payment_url_expired = (
+            payment_log.created_at
+            + timedelta(seconds=settings.PHONEPE_PAYMENT_EXPIRY_SECONDS)
+        ) < current_time
+
+    elif isinstance(payment_log, SbiePayPaymentLog):
+        payment_gateway = "sbiepay"
+        payment_status = payment_log.payment_status
+        is_payment_url_expired = True
+
+    return {
+        "order_id": donation.order_id,
+        "full_name": donation.full_name,
+        "amount": donation.amount,
+        "status": donation.status,
+        "need_g80_certificate": donation.need_g80_certificate,
+        "payment_details": {
+            "payment_gateway": payment_gateway,
+            "payment_status": payment_status,
+            "sbiepay_ref_id": getattr(payment_log, "sbiepay_ref_id", None),
+            "phonepe_order_id": getattr(payment_log, "phonepe_order_id", None),
+        },
+    }
+
+
+@router.get("/total_amount")
+async def get_total_donation_amount_endpoint(
+    donation_service: "DonationServiceDependency",
+    from_datetime: datetime | None = None,
+    to_datetime: datetime | None = None,
+):
+    total_amount = await donation_service.total_donation_amount(
+        from_datetime=from_datetime, to_datetime=to_datetime
+    )
+    return {"total_donation_amount": total_amount}
+
+
+# @router.get("/total_count")
+# async def get_total_donation_count_endpoint(
+#     donation_service: "DonationServiceDependency",
+#     from_datetime: datetime | None = None,
+#     to_datetime: datetime | None = None,
+# ):
+#     total_count = await donation_service.total_donation_count(
+#         from_datetime=from_datetime, to_datetime=to_datetime
+#     )
+#     return {"total_donation_count": total_count}
+
+
+# @router.get("/total_form80_requests")
+# async def get_total_form80_requests_endpoint(
+#     donation_service: "DonationServiceDependency",
+#     from_datetime: datetime | None = None,
+#     to_datetime: datetime | None = None,
+# ):
+#     total_count = await donation_service.total_form80_requests(
+#         from_datetime=from_datetime, to_datetime=to_datetime
+#     )
+#     return {"total_form80_requests": total_count}
+
+
+@router.get("/list_donations")
+async def list_donations_endpoint(
+    request: Request,
+    donation_service: "DonationServiceDependency",
+    pagination: PaginationParams,
+    auth: "AuthDependency",
+    status: str | None = None,
+    search: str | None = None,
+    inspired_by: str | None = None,
+    from_datetime: datetime | None = None,
+    to_datetime: datetime | None = None,
+) -> PaginatedResponse[DonationListResponse]:
+    donations = await donation_service.list_donations(
+        status=status,
+        from_datetime=from_datetime,
+        to_datetime=to_datetime,
+        search=search,
+        inspired_by=inspired_by,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return paginated_response(donations, request=request, schema=DonationListResponse)
+
+
+@router.get("/list_form80_requests")
+async def list_form80_requests_endpoint(
+    request: Request,
+    donation_service: "DonationServiceDependency",
+    pagination: PaginationParams,
+    auth: "AuthDependency",
+    search: str | None = None,
+    from_datetime: datetime | None = None,
+    to_datetime: datetime | None = None,
+    status: str | None = None,
+) -> PaginatedResponse[Form80SubmissionListResponse]:
+    form80_requests = await donation_service.list_form80_requests(
+        from_datetime=from_datetime,
+        to_datetime=to_datetime,
+        status=status,
+        search=search,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return paginated_response(
+        form80_requests, request=request, schema=Form80SubmissionListResponse
+    )
+
+
+@router.post("/submit_form80/{form80_submission_id}")
+async def update_form80_status_endpoint(
+    form80_submission_id: str,
+    donation_service: "DonationServiceDependency",
+    auth: "AuthDependency",
+    status: dict = Body(...),
+):
+    form80_submission = await donation_service.update_formg80_status(
+        submission_id=form80_submission_id, new_status=status["status"]
+    )
+    return form80_submission
+
+
+@router.get("/donation-details/{donation_id}")
+async def get_donation_details_endpoint(
+    donation_service: "DonationServiceDependency",
+    auth: "AuthDependency",
+    donation_id: str,
+):
+    """Get detailed donation information (admin only)"""
+    donation, payment = await donation_service.get_donation_details(
+        donation_id=donation_id
+    )
+    if not donation:
+        return {"error": "Donation not found"}, 404
+
+    # Handle different payment gateway types
+    payment_details = {}
+    if isinstance(payment, PhonePePaymentLog):
+        if isinstance(payment.phonepe_payment_details, list):
+            payment_data = payment.phonepe_payment_details[0]
+        else:
+            payment_data = payment.phonepe_payment_details
+
+        payment_details = {
+            "gateway": "phonepe",
+            "payment_status": payment.payment_status,
+            "merchant_order_id": payment.merchant_order_id,
+            "phonepe_order_id": payment.phonepe_order_id,
+            "payment_mode": payment_data.get("paymentMode") if payment_data else None,
+            "redirect_url": payment.redirect_url,
+        }
+    elif isinstance(payment, SbiePayPaymentLog):
+        payment_details = {
+            "gateway": "sbiepay",
+            "payment_status": payment.payment_status,
+            "merchant_order_id": payment.merchant_order_id,
+            "sbiepay_ref_id": payment.sbiepay_ref_id,
+            "pay_mode": payment.pay_mode,
+            "bank_code": payment.bank_code,
+            "bank_reference_number": payment.bank_reference_number,
+            "transaction_date": payment.transaction_date,
+            "reason_message": payment.reason_message,
+        }
+
+    return {
+        "order_id": donation.order_id,
+        "full_name": donation.full_name,
+        "email": donation.email,
+        "contact_number": donation.contact_number,
+        "amount": donation.amount,
+        "status": donation.status,
+        "need_g80_certificate": donation.need_g80_certificate,
+        "g80_certificate_id": (
+            donation.g80_certificate.id if donation.g80_certificate else None
+        ),
+        "inspired_by": donation.inspired_by,
+        "inspired_by_friend_name": donation.inspired_by_friend_name,
+        "payment_details": payment_details,
+        "donation": donation,
+    }
