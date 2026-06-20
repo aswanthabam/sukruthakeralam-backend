@@ -46,6 +46,8 @@ class DonationService(AbstractService):
             need_g80_certificate=donation_request.need_g80_certificate,
             confirmed_terms=donation_request.confirmed_terms,
             payment_provider="sbiepay",
+            inspired_by=donation_request.inspired_by.value if donation_request.inspired_by else None,
+            inspired_by_friend_name=donation_request.inspired_by_friend_name,
         )
 
         if donation.need_g80_certificate and donation_request.form_g80:
@@ -86,6 +88,8 @@ class DonationService(AbstractService):
             need_g80_certificate=donation_request.need_g80_certificate,
             confirmed_terms=donation_request.confirmed_terms,
             payment_provider="phonepe",
+            inspired_by=donation_request.inspired_by.value if donation_request.inspired_by else None,
+            inspired_by_friend_name=donation_request.inspired_by_friend_name,
         )
         if donation.need_g80_certificate and donation_request.form_g80:
             form80 = await self.submit_formg80(
@@ -134,6 +138,8 @@ class DonationService(AbstractService):
         need_g80_certificate: bool,
         confirmed_terms: bool,
         payment_provider: str = "phonepe",
+        inspired_by: str | None = None,
+        inspired_by_friend_name: str | None = None,
     ):
         order_id = self.payment_service.generate_unique_string(prefix="SK")
         donation = Donation(
@@ -146,6 +152,8 @@ class DonationService(AbstractService):
             confirmed_terms=confirmed_terms,
             status=DonationStatus.PENDING.value,
             payment_provider=payment_provider,
+            inspired_by=inspired_by,
+            inspired_by_friend_name=inspired_by_friend_name,
         )
         self.session.add(donation)
         await self.session.commit()
@@ -322,6 +330,7 @@ class DonationService(AbstractService):
         to_datetime: datetime | None = None,
         search: str | None = None,
         status: str | None = None,
+        inspired_by: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
     ):
@@ -336,6 +345,8 @@ class DonationService(AbstractService):
             query = query.where(Donation.created_at <= to_datetime)
         if status is not None:
             query = query.where(Donation.status == status)
+        if inspired_by is not None:
+            query = query.where(Donation.inspired_by == inspired_by)
         if search is not None:
             query = query.where(
                 Donation.full_name.ilike(f"%{search}%")

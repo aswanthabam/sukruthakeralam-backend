@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Annotated
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 from enum import Enum as PyEnum
 from pydantic.networks import validate_email
 
@@ -14,6 +14,15 @@ class DonationStatus(PyEnum):
 class FormG80SubmissionStatus(PyEnum):
     PENDING = "pending"
     GIVEN = "given"
+
+
+class InspiredBySource(PyEnum):
+    FACEBOOK = "facebook"
+    INSTAGRAM = "instagram"
+    NEWS = "news"
+    COMMUNITY = "community"
+    GROUPS = "groups"
+    FRIEND = "friend"
 
 
 class Form80SubmissionRequest(BaseModel):
@@ -65,6 +74,13 @@ class DonationRequest(BaseModel):
     need_g80_certificate: bool
     confirmed_terms: bool
     form_g80: Form80SubmissionRequest | None = None
+    inspired_by: InspiredBySource | None = Field(
+        None, description="What inspired you to support this initiative?"
+    )
+    inspired_by_friend_name: Annotated[
+        str | None,
+        StringConstraints(min_length=2, max_length=100),
+    ] = Field(None, description="Name of the friend who inspired you (required when inspired_by is 'friend')")
 
     @field_validator("email", mode="before")
     def validate_email(cls, value):
@@ -84,6 +100,14 @@ class DonationRequest(BaseModel):
         if value < 1000:
             raise ValueError("Minimum donation amount is 1000.")
         return value
+
+    @model_validator(mode="after")
+    def validate_friend_name(self):
+        if self.inspired_by == InspiredBySource.FRIEND and not self.inspired_by_friend_name:
+            raise ValueError("inspired_by_friend_name is required when inspired_by is 'friend'")
+        if self.inspired_by != InspiredBySource.FRIEND:
+            self.inspired_by_friend_name = None
+        return self
 
 
 class Form80SubmissionResponse(BaseModel):
@@ -109,6 +133,8 @@ class DonationResponse(BaseModel):
     confirmed_terms: bool
     status: DonationStatus
     form_g80: Form80SubmissionResponse | None = None
+    inspired_by: InspiredBySource | None = None
+    inspired_by_friend_name: str | None = None
 
 
 class PaymentResponse(BaseModel):
@@ -142,6 +168,8 @@ class DonationListResponse(BaseModel):
     amount: float
     status: str
     need_g80_certificate: bool
+    inspired_by: InspiredBySource | None = None
+    inspired_by_friend_name: str | None = None
     created_at: datetime
 
 
