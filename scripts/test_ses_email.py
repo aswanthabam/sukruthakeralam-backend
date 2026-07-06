@@ -89,15 +89,6 @@ def main() -> int:
         help="Send the test email using the default HTML template.",
     )
     args = parser.parse_args()
-
-    try:
-        context = json.loads(args.context)
-        if not isinstance(context, dict):
-            raise ValueError("context JSON must be an object")
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"\n❌ Invalid --context JSON: {e}")
-        return 1
-
     print("=" * 70)
     print("SES INTEGRATION TEST")
     print("=" * 70)
