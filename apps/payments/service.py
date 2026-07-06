@@ -305,10 +305,11 @@ class PaymentService(AbstractService):
 
         if not payment_log:
             raise InvalidRequestException("Payment information not found")
-
-        # Only perform verification if we have an ATRN (payment has been processed)
-        if payment_log.sbiepay_ref_id:
+        if payment_log.payment_status == SbiePayPaymentStatus.PENDING.value:
             return await self.verify_sbiepay_transaction(order_id)
+        # Only perform verification if we have an ATRN (payment has been processed)
+        # if payment_log.sbiepay_ref_id:
+        #     return await self.verify_sbiepay_transaction(order_id)
 
         return payment_log
 
