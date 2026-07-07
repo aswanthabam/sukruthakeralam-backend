@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Body, Request
+from fastapi.responses import StreamingResponse
+from core.payment.invoice import InvoiceServiceDependency
 
 from apps.auth.dependency import AuthDependency
 from apps.donation.schema import (
@@ -281,3 +283,35 @@ async def trigger_donation_email_endpoint(
         return {"error": "Failed to trigger email. Ensure the donation is completed."}, 400
 
     return {"message": "Email triggered successfully"}
+
+
+@router.get("/donation-details/{donation_id}/invoice")
+async def generate_invoice_endpoint(
+    donation_id: str,
+    donation_service: "DonationServiceDependency",
+    invoice_service: "InvoiceServiceDependency",
+    auth: "AuthDependency",
+):
+    """Generate invoice for a donation (admin only)"""
+    donation, payment = await donation_service.get_donation_details(
+        donation_id=donation_id
+    )
+    if not donation:
+        return {"error": "Donation not found"}, 404
+
+    if not payment:
+        return {"error": "Payment log not found"}, 400
+
+    buffer = invoice_service.generate_invoice_pdf(
+        donation=donation,
+        payment_provider=donation.payment_provider,
+        payment_log=payment
+    )
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=Donation_Receipt_{donation.order_id}.pdf"
+        },
+    )

@@ -51,3 +51,4 @@ uvicorn==0.35.0
 yarl==1.20.1
 python-multipart
 loguru
+reportlab
