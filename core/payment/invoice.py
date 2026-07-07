@@ -6,127 +6,170 @@ from typing_extensions import Annotated
 from apps.donation.models import Donation
 import io
 from datetime import datetime
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 from num2words import num2words
+
+# ReportLab imports for structured layout (Platypus)
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+import os
 
 class InvoiceService(AbstractService):
     def generate_invoice_pdf(self, donation: Donation, payment_provider: Literal["sbiepay", "phonepe"], payment_log: SbiePayPaymentLog | PhonePePaymentLog) -> io.BytesIO:
         buffer = io.BytesIO()
-        pdf = canvas.Canvas(buffer, pagesize=letter)
-        pdf.setTitle(f"Donation_Receipt_{donation.order_id}")
+        # Set margins to utilize space better
+        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=50, bottomMargin=50)
+        doc.title = f"Donation_Receipt_{donation.order_id}"
+        
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Custom styles for headers and text
+        title_style = ParagraphStyle(
+            name='TitleStyle',
+            parent=styles['Heading1'],
+            alignment=TA_CENTER,
+            fontSize=18,
+            spaceAfter=6
+        )
+        
+        address_style = ParagraphStyle(
+            name='AddressStyle',
+            parent=styles['Normal'],
+            alignment=TA_CENTER,
+            fontSize=10,
+            leading=12,
+            spaceAfter=4
+        )
+        
+        contact_style = ParagraphStyle(
+            name='ContactStyle',
+            parent=styles['Normal'],
+            alignment=TA_CENTER,
+            fontSize=10,
+            textColor=colors.darkslategray,
+            spaceAfter=12
+        )
+
+        receipt_title_style = ParagraphStyle(
+            name='ReceiptTitle',
+            parent=styles['Heading2'],
+            alignment=TA_CENTER,
+            fontSize=14,
+            spaceBefore=10,
+            spaceAfter=20
+        )
 
         # Sukrutha Keralam Details 
-        # Update these with actuals or leave None to exclude from the PDF
         ngo_name = "Sukrutha Keralam"
-        ngo_address = "Janam Souhrudavedi Cultural & Charitable Trust, JTC 52/3429, Krishna Nagar, Thiruvallom Road, Karumam, Thiruvananthapuram – 695002, Kerala, India" 
+        # Using HTML-like tags supported by ReportLab Paragraphs for line breaks if needed, or rely on auto-wrap
+        ngo_address = "Janam Souhrudavedi Cultural & Charitable Trust, JTC 52/3429,<br/>Krishna Nagar, Thiruvallom Road, Karumam,<br/>Thiruvananthapuram – 695002, Kerala, India" 
         ngo_phone = "+91 95674 91010" 
         ngo_email = "support@sukruthakeralam.com"
         
-        # Optional Registration details
-        ngo_pan = None
-        ngo_80g = None
-        ngo_fcra = None
-
-        # Draw Header
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawCentredString(300, 750, ngo_name)
-        
-        pdf.setFont("Helvetica", 10)
-        y_offset = 735
-        
-        if ngo_address:
-            pdf.drawCentredString(300, y_offset, ngo_address)
-            y_offset -= 15
+        # Header Section
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        logo_path = os.path.join(base_dir, "assets", "logo.png")
+        if os.path.exists(logo_path):
+            logo = Image(logo_path, width=60, height=60)
+            logo.hAlign = 'CENTER'
+            elements.append(logo)
+            elements.append(Spacer(1, 10))
             
-        contact_info = []
-        if ngo_phone: contact_info.append(f"Phone: {ngo_phone}")
-        if ngo_email: contact_info.append(f"Email: {ngo_email}")
-        if contact_info:
-            pdf.drawCentredString(300, y_offset, " | ".join(contact_info))
-            y_offset -= 15
-            
-        reg_info = []
-        if ngo_pan: reg_info.append(f"PAN: {ngo_pan}")
-        if ngo_80g: reg_info.append(f"80G URN: {ngo_80g}")
-        if ngo_fcra: reg_info.append(f"FCRA: {ngo_fcra}")
-        if reg_info:
-            pdf.drawCentredString(300, y_offset, " | ".join(reg_info))
-            y_offset -= 15
-
-        pdf.line(50, y_offset, 550, y_offset)
-        y_offset -= 25
-
+        elements.append(Paragraph(f"<b>{ngo_name}</b>", title_style))
+        elements.append(Paragraph(ngo_address, address_style))
+        elements.append(Paragraph(f"Phone: {ngo_phone} &nbsp;|&nbsp; Email: {ngo_email}", contact_style))
+        
+        elements.append(Spacer(1, 10))
+        
         # Receipt Title
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawCentredString(300, y_offset, "DONATION RECEIPT")
-        y_offset -= 40
+        elements.append(Paragraph("<u>DONATION RECEIPT</u>", receipt_title_style))
 
-        # Donor & Transaction Info Setup
-        pdf.setFont("Helvetica", 12)
-        
-        # Format Amount to Words (Indian English format)
-        # Assumes donation.amount is a numeric type
+        # Prepare Transaction Data
         amount = float(getattr(donation, 'amount', 0.0))
         amount_words = num2words(amount, lang='en_IN').title() + " Rupees Only"
-
-        # Fallbacks for dynamic fields in case your ORM names differ
+        
         donor_name = getattr(donation, 'full_name', getattr(donation, 'name', 'N/A'))
         donor_phone = getattr(donation, 'phone_number', getattr(donation, 'phone', 'N/A'))
-        donor_email = getattr(donation, 'email', None)
+        donor_email = getattr(donation, 'email', 'N/A')
         
-        # Safely extract created date
         created_at = getattr(donation, 'created_at', None)
-        date_str = created_at.strftime('%Y-%m-%d') if created_at else datetime.now().strftime('%Y-%m-%d')
+        date_str = created_at.strftime('%Y-%m-%d %H:%M') if created_at else datetime.now().strftime('%Y-%m-%d %H:%M')
 
-        details = [
-            f"Receipt Number: {donation.order_id}",
-            f"Date: {date_str}",
-            f"Donor Name: {donor_name}",
-            f"Donor Phone: {donor_phone}",
+        # Determine Transaction ID
+        if payment_provider == "sbiepay":
+            tx_id = getattr(payment_log, "sbiepay_ref_id", "N/A")
+        elif payment_provider == "phonepe":
+            tx_id = getattr(payment_log, "provider_reference_id", "N/A") # often mapped to this, adjust if needed
+        else:
+            tx_id = "N/A"
+
+        # Define Table Data (Row by Row)
+        data = [
+            ["Receipt Number:", str(donation.order_id)],
+            ["Date & Time:", date_str],
+            ["Donor Name:", donor_name],
+            ["Donor Phone:", str(donor_phone)],
+            ["Donor Email:", donor_email if donor_email else "N/A"],
+            ["Payment Provider:", payment_provider.upper()],
+            ["Transaction Ref:", str(tx_id)],
+            ["Donation Amount:", f"INR {amount:,.2f}"],
+            ["Amount in Words:", Paragraph(amount_words, styles['Normal'])] # Wrap long text in a Paragraph
         ]
 
-        if donor_email:
-            details.append(f"Donor Email: {donor_email}")
-
-        details.extend([
-            f"Donation Amount: INR {amount:,.2f}",
-            f"Amount in Words: {amount_words}",
-        ])
-
-        # Transaction ID if available
-        if payment_provider == "sbiepay":
-            tx_id = getattr(payment_log, "sbiepay_ref_id")
-        elif payment_provider == "phonepe":
-            tx_id = getattr(payment_log, "phonepe_order_id")
-        else:
-            tx_id = None
-        if tx_id:
-            details.append(f"Transaction Ref: {tx_id}")
-
-        # Draw details on PDF dynamically
-        for detail in details:
-            pdf.drawString(50, y_offset, detail)
-            y_offset -= 25
-
-        # Footer / Declaration
-        y_offset -= 40
-        pdf.setFont("Helvetica-Oblique", 10)
+        # Create Table Structure
+        # Column widths: 150 points for labels, 350 for values
+        t = Table(data, colWidths=[150, 350])
         
-        if ngo_80g:
-            pdf.drawString(50, y_offset, "This receipt is issued for tax exemption purposes under Section 80G of the Income Tax Act, 1961.")
-        else:
-            pdf.drawString(50, y_offset, "Thank you for your generous contribution to Sukrutha Keralam.")
+        # Table Styling
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.whitesmoke), # Light gray background for labels
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (0, -1), 'RIGHT'), # Align labels to right
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),  # Align values to left
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'), # Bold labels
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),      # Normal values
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey), # Subtle grid lines
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
         
-        y_offset -= 60
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(400, y_offset, "Authorized Signatory")
+        elements.append(t)
+        
+        elements.append(Spacer(1, 40))
 
-        pdf.showPage()
-        pdf.save()
+        # Footer Section
+        footer_style = ParagraphStyle(
+            name='FooterStyle',
+            parent=styles['Normal'],
+            alignment=TA_LEFT,
+            fontSize=10,
+            textColor=colors.dimgrey,
+            fontName='Helvetica-Oblique'
+        )
+        
+        footer_text = "Thank you for your generous contribution to Sukrutha Keralam."
+        elements.append(Paragraph(footer_text, footer_style))
+        
+        elements.append(Spacer(1, 60))
+        
+        sign_style = ParagraphStyle(
+            name='SignStyle',
+            parent=styles['Normal'],
+            alignment=TA_RIGHT,
+            fontSize=11,
+            fontName='Helvetica-Bold'
+        )
+        elements.append(Paragraph("Authorized Signatory", sign_style))
+
+        # Build the PDF
+        doc.build(elements)
 
         buffer.seek(0)
         return buffer
-
 
 InvoiceServiceDependency = Annotated[InvoiceService, InvoiceService.get_dependency()]
