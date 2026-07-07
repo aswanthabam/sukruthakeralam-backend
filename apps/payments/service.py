@@ -268,6 +268,8 @@ class PaymentService(AbstractService):
             payment_log.bank_reference_number = parsed_data.bank_reference_number
             payment_log.transaction_date = parsed_data.transaction_date
             payment_log.pay_mode = parsed_data.pay_mode
+            payment_log.reason_message = parsed_data.status_description
+            payment_log.other_details = parsed_data.other_details
 
             # Update payment status based on verification
             if parsed_data.transaction_status == "SUCCESS":
