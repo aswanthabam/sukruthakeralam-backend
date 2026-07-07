@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Annotated
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, ConfigDict
 from enum import Enum as PyEnum
 from pydantic.networks import validate_email
 
@@ -136,6 +136,8 @@ class DonationStatusResponse(BaseModel):
 
 
 class DonationListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     order_id: str
     full_name: str

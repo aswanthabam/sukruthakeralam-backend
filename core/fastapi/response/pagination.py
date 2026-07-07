@@ -68,9 +68,11 @@ def paginated_response(
     else:
         previous_url = None
 
-    model_dicts = jsonable_encoder(paginated_result)
-
-    validated_items = [schema.model_validate(item_dict) for item_dict in model_dicts]
+    if getattr(schema, "model_config", {}).get("from_attributes", False):
+        validated_items = [schema.model_validate(item) for item in paginated_result]
+    else:
+        model_dicts = jsonable_encoder(paginated_result)
+        validated_items = [schema.model_validate(item_dict) for item_dict in model_dicts]
 
     return PaginatedResponse[M](
         limit=limit,
