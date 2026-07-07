@@ -20,6 +20,27 @@ services:
       timeout: 5s
       retries: 5
 
+  pgbackup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: ${APP_NAME}_pgbackup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - /var/backups/${APP_NAME}_pgbackup:/backups # Backups will be saved in a 'db_backups' folder on your host
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} # Required for backup connection
+      - SCHEDULE=@daily                        # Run backup once a day at midnight
+      - BACKUP_KEEP_DAYS=7                     # Delete backups older than 7 days
+      - BACKUP_KEEP_WEEKS=4                    # Keep 1 backup per week for 4 weeks
+      - BACKUP_KEEP_MONTHS=6                   # Keep 1 backup per month for 6 months
+      - HEALTHCHECK_PORT=8080                  # Optional: port for checking backup status
+
   backend:
     build:
       context: .
