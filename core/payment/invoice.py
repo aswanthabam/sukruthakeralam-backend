@@ -1,7 +1,4 @@
 from core.fastapi.dependency.service_dependency import AbstractService
-from curses import textpad
-from distutils import fancy_getopt
-from core import payment
 from apps.payments.models import PhonePePaymentLog
 from apps.payments.models import SbiePayPaymentLog
 from typing import Literal
