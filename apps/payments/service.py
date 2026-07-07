@@ -210,7 +210,7 @@ class PaymentService(AbstractService):
             # Map transaction status to our payment status
             if parsed_data.transaction_status == "SUCCESS":
                 payment_log.payment_status = SbiePayPaymentStatus.SUCCESS.value
-            elif parsed_data.transaction_status in ["FAILED", "FAIL"]:
+            elif parsed_data.transaction_status in ["FAILED", "FAIL", "ABORT"]:
                 payment_log.payment_status = SbiePayPaymentStatus.FAILED.value
             else:
                 payment_log.payment_status = SbiePayPaymentStatus.PENDING.value
@@ -274,7 +274,7 @@ class PaymentService(AbstractService):
             # Update payment status based on verification
             if parsed_data.transaction_status == "SUCCESS":
                 payment_log.payment_status = SbiePayPaymentStatus.SUCCESS.value
-            elif parsed_data.transaction_status in ["FAILED", "FAIL"]:
+            elif parsed_data.transaction_status in ["FAILED", "FAIL", "ABORT"]:
                 payment_log.payment_status = SbiePayPaymentStatus.FAILED.value
             else:
                 payment_log.payment_status = SbiePayPaymentStatus.PENDING.value
