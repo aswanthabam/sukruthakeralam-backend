@@ -7,6 +7,7 @@ from apps.donation.service import DonationServiceDependency
 from apps.payments.service import PaymentServiceDependency
 from apps.settings import settings
 from core.exception.request import InvalidRequestException
+from core.payment.sbiepay.logger import log_sbiepay_transaction
 
 router = APIRouter(
     prefix="/payments",
@@ -62,12 +63,27 @@ async def sbiepay_success(request: Request, payment_service: PaymentServiceDepen
         # Process the encrypted response
         payment_log = await payment_service.handle_sbiepay_response(encrypted_response)
 
+        # Log the success callback
+        log_sbiepay_transaction(
+            payment_log.merchant_order_id,
+            "sbiepay_success_callback",
+            {
+                "encrypted_response": encrypted_response,
+                "decrypted_data": payment_log.sbiepay_response_data
+            }
+        )
+
         # Redirect to frontend with success status
         redirect_url = f"{settings.FRONTEND_DOMAIN}/thankyou?order_id={payment_log.merchant_order_id}&status=success"
         return RedirectResponse(url=redirect_url, status_code=303)
 
     except Exception as e:
         logger.error(f"Error processing SBIePay success callback: {str(e)}")
+        log_sbiepay_transaction(
+            "error",
+            "sbiepay_success_error",
+            {"error": str(e), "encrypted_response": encrypted_response if 'encrypted_response' in locals() else None}
+        )
         redirect_url = (
             f"{settings.FRONTEND_DOMAIN}/thankyou?message=Payment processing failed"
         )
@@ -92,6 +108,17 @@ async def sbiepay_failure(request: Request, payment_service: PaymentServiceDepen
 
         payment_log = await payment_service.handle_sbiepay_response(encrypted_response)
         order_id = payment_log.merchant_order_id
+
+        # Log the failure callback
+        log_sbiepay_transaction(
+            order_id,
+            "sbiepay_failure_callback",
+            {
+                "encrypted_response": encrypted_response,
+                "decrypted_data": payment_log.sbiepay_response_data
+            }
+        )
+
         redirect_url = (
             f"{settings.FRONTEND_DOMAIN}/thankyou?order_id={order_id}&status=failed"
         )
@@ -101,6 +128,11 @@ async def sbiepay_failure(request: Request, payment_service: PaymentServiceDepen
 
     except Exception as e:
         logger.error(f"Error processing SBIePay failure callback: {str(e)}")
+        log_sbiepay_transaction(
+            "error",
+            "sbiepay_failure_error",
+            {"error": str(e), "encrypted_response": encrypted_response if 'encrypted_response' in locals() else None}
+        )
         redirect_url = f"{settings.FRONTEND_DOMAIN}/thankyou?message=Payment failed"
         return RedirectResponse(url=redirect_url, status_code=303)
 
@@ -131,6 +163,15 @@ async def sbiepay_pushresponse(
         # Process the encrypted response
         payment_log = await payment_service.handle_sbiepay_response(encrypted_response)
 
+        log_sbiepay_transaction(
+            payment_log.merchant_order_id,
+            "sbiepay_pushresponse_callback",
+            {
+                "encrypted_response": encrypted_response,
+                "decrypted_data": payment_log.sbiepay_response_data
+            }
+        )
+
         # Perform double verification for final status
         verified_log = await payment_service.verify_sbiepay_transaction(
             payment_log.merchant_order_id, payment_log.sbiepay_ref_id
@@ -145,4 +186,9 @@ async def sbiepay_pushresponse(
 
     except Exception as e:
         logger.error(f"Error processing SBIePay server callback: {str(e)}")
+        log_sbiepay_transaction(
+            "error",
+            "sbiepay_pushresponse_error",
+            {"error": str(e), "encrypted_response": encrypted_response if 'encrypted_response' in locals() else None}
+        )
         return {"status": "error", "message": str(e)}

@@ -18,6 +18,7 @@ from .schemas import (
     DoubleVerificationParsedResponse,
 )
 from .settings import settings
+from .logger import log_sbiepay_transaction
 
 
 class SbiePayError(Exception):
@@ -283,10 +284,22 @@ class SbiePayClient:
                 "merchantId": self.merchant_id,
             }
 
+            log_sbiepay_transaction(
+                merchant_order_number or atrn or "unknown_dv",
+                "double_verification_request",
+                payload
+            )
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.dv_query_url, data=payload) as response:
                     response.raise_for_status()
                     response_text = await response.text()
+            
+            log_sbiepay_transaction(
+                merchant_order_number or atrn or "unknown_dv",
+                "double_verification_raw_response",
+                {"raw_response": response_text}
+            )
 
             response_data = response_text.split("|")
             parsed_data = DoubleVerificationParsedResponse(
@@ -321,6 +334,13 @@ class SbiePayClient:
             self.logger.info(
                 f"Transaction verification successful: {parsed_data.transaction_status}"
             )
+            
+            log_sbiepay_transaction(
+                parsed_data.merchant_order_number,
+                "double_verification_parsed_response",
+                {"parsed_response": parsed_data.dict()}
+            )
+            
             return VerifyTransactionResponse(
                 status="success",
                 message="Double verification successful",
