@@ -108,6 +108,7 @@ class DonationResponse(BaseModel):
     need_g80_certificate: bool
     confirmed_terms: bool
     status: DonationStatus
+    is_email_sent: bool
     form_g80: Form80SubmissionResponse | None = None
 
 
@@ -142,6 +143,7 @@ class DonationListResponse(BaseModel):
     amount: float
     status: str
     need_g80_certificate: bool
+    is_email_sent: bool
     created_at: datetime
 
 

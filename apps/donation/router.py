@@ -11,6 +11,7 @@ from apps.donation.schema import (
 from apps.donation.service import DonationServiceDependency
 from apps.payments.models import PhonePePaymentLog, SbiePayPaymentLog
 from apps.payments.schema import PhonePePaymentStatus
+from apps.payments.service import PaymentServiceDependency
 from core.exception.request import InvalidRequestException
 from core.fastapi.response.pagination import (
     PaginatedResponse,
@@ -251,9 +252,32 @@ async def get_donation_details_endpoint(
         "amount": donation.amount,
         "status": donation.status,
         "need_g80_certificate": donation.need_g80_certificate,
+        "is_email_sent": donation.is_email_sent,
         "g80_certificate_id": (
             donation.g80_certificate.id if donation.g80_certificate else None
         ),
         "payment_details": payment_details,
         "donation": donation,
     }
+
+
+@router.post("/donation-details/{donation_id}/trigger-email")
+async def trigger_donation_email_endpoint(
+    donation_id: str,
+    donation_service: "DonationServiceDependency",
+    payment_service: "PaymentServiceDependency",
+    auth: "AuthDependency",
+):
+    """Manually trigger email for a donation (admin only)"""
+    donation, _ = await donation_service.get_donation_details(donation_id=donation_id)
+    if not donation:
+        return {"error": "Donation not found"}, 404
+
+    if not donation.email:
+        return {"error": "No email associated with this donation"}, 400
+
+    success = await payment_service.retry_failed_email(donation_id)
+    if not success:
+        return {"error": "Failed to trigger email. Ensure the donation is completed."}, 400
+
+    return {"message": "Email triggered successfully"}

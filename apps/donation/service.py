@@ -6,7 +6,7 @@ from sqlalchemy import distinct, func, select
 from typing_extensions import Annotated
 from fastapi.params import Depends
 from cryptography.fernet import Fernet
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from apps.payments.models import PhonePePaymentLog, SbiePayPaymentLog
 from apps.payments.schema import PhonePePaymentStatus, SbiePayPaymentStatus
@@ -247,7 +247,10 @@ class DonationService(AbstractService):
         """Get detailed donation information"""
         donation = await self.session.scalar(
             select(Donation)
-            .options(joinedload(Donation.g80_certificate))
+            .options(
+                joinedload(Donation.g80_certificate),
+                selectinload(Donation.email_logs)
+            )
             .where(Donation.id == donation_id)
         )
 
@@ -327,7 +330,10 @@ class DonationService(AbstractService):
     ):
         query = (
             select(Donation)
-            .options(joinedload(Donation.g80_certificate))
+            .options(
+                joinedload(Donation.g80_certificate),
+                selectinload(Donation.email_logs)
+            )
             .order_by(Donation.created_at.desc())
         )
         if from_datetime is not None:

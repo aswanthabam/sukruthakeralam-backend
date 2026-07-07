@@ -37,6 +37,12 @@ class Donation(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
         uselist=False,
     )
 
+    @property
+    def is_email_sent(self) -> bool:
+        if not self.email_logs:
+            return False
+        return any(log.status == "sent" for log in self.email_logs)
+
 
 class FormG80Submission(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     __tablename__ = "form_g80_submissions"
