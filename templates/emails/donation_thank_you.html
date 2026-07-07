@@ -8,146 +8,144 @@
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
+            color: #333333;
+            margin: 0;
             padding: 20px;
-            background-color: #f4f4f4;
+            background-color: #f9f9f9;
         }
         .container {
+            max-width: 600px;
+            margin: 0 auto;
             background-color: #ffffff;
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
         }
-        .header {
-            text-align: center;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #4CAF50;
+        .header-table {
+            width: 100%;
+            border-bottom: 2px solid #00715d;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
         }
-        .header h1 {
-            color: #4CAF50;
-            margin: 0;
+        .logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 6px;
+            display: block;
         }
-        .content {
-            margin: 30px 0;
-        }
-        .donation-details {
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .donation-details h2 {
-            color: #4CAF50;
-            margin-top: 0;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-        .detail-label {
+        .brand-name {
+            font-size: 20px;
             font-weight: bold;
-            color: #666;
+            color: #00715d;
+            padding-left: 15px;
+            vertical-align: middle;
         }
-        .detail-value {
-            color: #333;
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border: 1px solid #eeeeee;
+        }
+        .details-table th,
+        .details-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .details-table th {
+            width: 35%;
+            background-color: #f9f9f9;
+            color: #555555;
+            font-weight: bold;
+            border-right: 1px solid #eeeeee;
         }
         .amount {
-            font-size: 24px;
-            color: #4CAF50;
             font-weight: bold;
+            color: #00715d;
+            font-size: 16px;
         }
         .footer {
             margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            text-align: center;
-            color: #666;
-            font-size: 14px;
+            padding-top: 15px;
+            border-top: 1px solid #eeeeee;
+            font-size: 12px;
+            color: #777777;
         }
-        a.footer-link {
-            color: #4CAF50;
+        a {
+            color: #00715d;
             text-decoration: none;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🙏 Thank You for Your Generous Donation! 🙏</h1>
-        </div>
-        
-        <div class="content">
-            <p>Dear {{ full_name }},</p>
-            
-            <p>We sincerely thank you for your valuable contribution to <strong>{{ organization_name|default("Sukrutha Keralam") }}</strong>. Your support plays a crucial role in transforming lives across Kerala — helping us reach communities, uplift families, and create sustainable change.</p>
-            
-            <div class="donation-details">
-                <h2>Donation Details</h2>
-                
-                <div class="detail-row">
-                    <span class="detail-label">Order ID:</span>
-                    <span class="detail-value">{{ order_id }}</span>
-                </div>
-                
-                <div class="detail-row">
-                    <span class="detail-label">Donation Amount:</span>
-                    <span class="detail-value amount">₹{{ amount }}</span>
-                </div>
-                
-                <div class="detail-row">
-                    <span class="detail-label">Payment Status:</span>
-                    <span class="detail-value">{{ status|upper }}</span>
-                </div>
-                
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{ donation_date }}</span>
-                </div>
-                
-                {% if payment_mode %}
-                <div class="detail-row">
-                    <span class="detail-label">Payment Mode:</span>
-                    <span class="detail-value">{{ payment_mode }}</span>
-                </div>
-                {% endif %}
-                
-                {% if need_g80_certificate %}
-                <div class="detail-row">
-                    <span class="detail-label">80G Certificate:</span>
-                    <span class="detail-value">Requested - Will be processed soon</span>
-                </div>
-                {% endif %}
-            </div>
-            
-            <p>With your donation, millions of lives in Kerala will be benefitted, and together we are building a better, brighter, and more compassionate tomorrow.</p>
-            
-            {% if need_g80_certificate %}
-            <p><strong>Note:</strong> Your request for an 80G tax exemption certificate has been received. We will process it and send you the certificate via email within 7-10 business days.</p>
-            {% else %}
-            <p><strong>Tax Exemption (80G Certificate):</strong> If you require a Form 80G certificate for tax exemption, please reach out to us at <strong>{{ contact_email|default("support@sukruthakeralam.com") }}</strong> with your transaction details.</p>
-            {% endif %}
-            
-            <p>If you have any other questions about your donation or our work, please don't hesitate to contact us.</p>
-            
-            <p>Thank you once again for believing in our mission and being part of Sukrutha Keralam’s journey toward a better Kerala.</p>
-            
-            <p>Warm regards,<br>
-            <strong>The {{ organization_name|default("Sukrutha Keralam") }} Team</strong><br>
-            <a href="https://www.sukruthakeralam.com" class="footer-link">www.sukruthakeralam.com</a>
-            </p>
-        </div>
-        
-        <div class="footer">
-            <p>This is an automated email. Please do not reply to this email.</p>
-            <p>&copy; {{ year|default("2025") }} {{ organization_name|default("Sukrutha Keralam") }}. All rights reserved.</p>
-        </div>
+<div class="container">
+
+    <table class="header-table" cellpadding="0" cellspacing="0">
+        <tr>
+            <td width="50">
+                <img src="https://sukruthakeralam.com/wp-content/uploads/2025/06/dp.png"
+                     alt="Sukrutha Keralam Logo"
+                     class="logo">
+            </td>
+            <td class="brand-name">
+                Sukrutha Keralam
+            </td>
+        </tr>
+    </table>
+
+    <p>Dear {{ full_name }},</p>
+
+    <p>Thank you for your donation to <strong>Sukrutha Keralam</strong>.</p>
+
+    <p>Your support helps us continue our work and reach more people in need. We truly appreciate your kindness and generosity.</p>
+
+    <p><strong>Donation Details</strong></p>
+
+    <table class="details-table">
+        <tr>
+            <th>Order ID</th>
+            <td>{{ order_id }}</td>
+        </tr>
+        <tr>
+            <th>Donation Amount</th>
+            <td class="amount">₹{{ amount }}</td>
+        </tr>
+        <tr>
+            <th>Payment Status</th>
+            <td>{{ status|upper }}</td>
+        </tr>
+        <tr>
+            <th>Donation Date</th>
+            <td>{{ donation_date }}</td>
+        </tr>
+        {% if payment_mode %}
+        <tr>
+            <th>Payment Method</th>
+            <td>{{ payment_mode }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <p>Thank you for being part of our mission to make a positive difference in our community.</p>
+
+    <p>If you have any questions about your donation, please contact us at
+        <a href="mailto:teamsukruthakeralam@gmail.com">teamsukruthakeralam@gmail.com</a>.
+    </p>
+
+    <p>
+        Thank you once again.<br><br>
+
+        Best regards,<br>
+        <strong>The Sukrutha Keralam Team</strong><br>
+        <a href="https://www.sukruthakeralam.com">www.sukruthakeralam.com</a>
+    </p>
+
+    <div class="footer">
+        <p>This is an automated email. Please do not reply to this message.</p>
+        <p>&copy; 2026 Sukrutha Keralam. All rights reserved.</p>
     </div>
+
+</div>
 </body>
 </html>
