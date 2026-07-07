@@ -39,29 +39,29 @@
             padding-left: 15px;
             vertical-align: middle;
         }
-        .donation-highlight {
-            text-align: center;
-            margin: 35px 0;
-            padding: 25px 20px;
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border: 1px solid #eeeeee;
+        }
+        .details-table th,
+        .details-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .details-table th {
+            width: 35%;
             background-color: #f9f9f9;
-            border-radius: 6px;
-        }
-        .highlight-label {
-            margin: 0;
             color: #555555;
-            font-size: 16px;
+            font-weight: bold;
+            border-right: 1px solid #eeeeee;
         }
-        .highlight-amount {
-            margin: 10px 0;
-            font-size: 36px;
+        .amount {
             font-weight: bold;
             color: #00715d;
-        }
-        .order-note {
-            font-size: 13px;
-            color: #777777;
-            text-align: center;
-            margin-top: 15px;
+            font-size: 16px;
         }
         .footer {
             margin-top: 30px;
@@ -99,16 +99,22 @@
 
     <p>Your support helps us continue our work and reach more people in need. We truly appreciate your kindness and generosity.</p>
 
-    <div class="donation-highlight">
-        <p class="highlight-label">Amount of</p>
-        <p class="highlight-amount">₹{{ amount }}</p>
-        <p class="highlight-label">received on {{ donation_date }}</p>
-        
-        <div class="order-note">
-            Payment Ref. Number: <strong>{{ order_id }}</strong><br>
-            <em>Please keep this reference number for your records.</em>
-        </div>
-    </div>
+    <p><strong>Donation Details</strong></p>
+
+    <table class="details-table">
+        <tr>
+            <th>Donation Amount</th>
+            <td class="amount">₹{{ amount }}</td>
+        </tr>
+        <tr>
+            <th>Order ID</th>
+            <td>{{ order_id }}</td>
+        </tr>
+        <tr>
+            <th>Donation Date</th>
+            <td>{{ donation_date }}</td>
+        </tr>
+    </table>
 
     <p>Thank you for being part of our mission to make a positive difference in our community.</p>
 
