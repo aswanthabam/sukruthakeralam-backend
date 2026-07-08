@@ -7,6 +7,7 @@ from apps.donation.models import Donation
 import io
 from datetime import datetime
 from num2words import num2words
+from zoneinfo import ZoneInfo
 
 # ReportLab imports for structured layout (Platypus)
 from reportlab.lib.pagesizes import letter
@@ -96,7 +97,13 @@ class InvoiceService(AbstractService):
         donor_email = getattr(donation, 'email', 'N/A')
         
         created_at = getattr(donation, 'created_at', None)
-        date_str = created_at.strftime('%Y-%m-%d %H:%M') if created_at else datetime.now().strftime('%Y-%m-%d %H:%M')
+        ist_tz = ZoneInfo("Asia/Kolkata")
+        if created_at:
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=ZoneInfo("UTC"))
+            date_str = created_at.astimezone(ist_tz).strftime('%Y-%m-%d %H:%M %Z')
+        else:
+            date_str = datetime.now(ist_tz).strftime('%Y-%m-%d %H:%M %Z')
 
         # Determine Transaction ID
         if payment_provider == "sbiepay":

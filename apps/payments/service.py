@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import random
 import string
 import logging
@@ -433,13 +434,18 @@ class PaymentService(AbstractService):
                 "bankReferenceNumber": payment_log.bank_reference_number,
             }
 
+        created_at = donation.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=ZoneInfo("UTC"))
+        ist_date = created_at.astimezone(ZoneInfo("Asia/Kolkata"))
+
         # Prepare email context with all donation details
         context = {
             "full_name": donation.full_name,
             "order_id": donation.order_id,
             "amount": f"{donation.amount:,.2f}",
             "status": donation.status,
-            "donation_date": donation.created_at.strftime("%B %d, %Y at %I:%M %p"),
+            "donation_date": ist_date.strftime("%B %d, %Y at %I:%M %p IST"),
             "need_g80_certificate": donation.need_g80_certificate,
             "payment_mode": payment_mode or "Online Payment",
             "year": datetime.now().year,
