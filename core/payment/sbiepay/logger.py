@@ -1,8 +1,9 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, date
 from typing import Union
 from loguru import logger
+from decimal import Decimal
 
 # Resolve the project root assuming this file is at core/payment/sbiepay/logger.py
 BASE_DIR = os.path.dirname(
@@ -15,6 +16,13 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 # Keep track of which actions we've added handlers for
 _configured_actions = set()
+
+def _json_default(obj):
+    if isinstance(obj, Decimal):
+        return str(obj)  # str, not float — avoids float rounding on money values
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    return str(obj)  # fallback for anything else unexpected
 
 def _ensure_action_handler(action: str):
     """
@@ -64,7 +72,7 @@ def log_sbiepay_transaction(order_id: str, action: str, data: Union[dict, str]):
         
         # Log it with the `action` bound to the `extra` dict so the filter catches it
         action_logger = logger.bind(action=action)
-        action_logger.info(json.dumps(log_entry))
+        action_logger.info(json.dumps(log_entry, default=_json_default))
         
     except Exception as e:
         logger.error(f"Failed to write to sbiepay log for action {action}: {str(e)}")

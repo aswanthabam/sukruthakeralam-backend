@@ -239,6 +239,12 @@ class SbiePayClient:
             self.logger.error(f"Error handling SBIePay response: {str(e)}")
             raise SbiePayError(f"Response handling failed: {str(e)}")
 
+    def _decimal_or_none(self, value: str):
+        value = value.strip()
+        if value in ("", "NA", "NULL"):
+            return None
+        return Decimal(value)
+
     async def verify_transaction(
         self, atrn: str = None, merchant_order_number: str = None, amount: float = None
     ) -> VerifyTransactionResponse:
@@ -310,7 +316,7 @@ class SbiePayClient:
                 currency=response_data[4],
                 other_details=response_data[5],
                 merchant_order_number=response_data[6],
-                amount=Decimal(response_data[7]),
+                amount=self._decimal_or_none(response_data[7]),
                 status_description=response_data[8],
                 bank_code=response_data[9],
                 bank_reference_number=response_data[10],
