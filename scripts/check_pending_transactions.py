@@ -19,7 +19,7 @@ of age for a one-off check:
     python scripts/check_pending_transactions.py --min-age-minutes 0 --max-age-hours 720
 
 Crontab entry (every 30 minutes, adjust paths):
-    */30 * * * * cd /path/to/project && /path/to/venv/bin/python scripts/check_pending_transactions.py >> logs/cron.log 2>&1
+    */30 * * * * cd /var/www/sukruthakeralam-backend && /usr/bin/docker compose -f docker-compose.prod.yml exec -T backend python /backend/scripts/check_pending_transactions.py >> /var/www/sukruthakeralam-backend/logs/cron.log 2>&1
 """
 
 import argparse
