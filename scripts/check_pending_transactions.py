@@ -6,18 +6,23 @@ Finds SBIePay payments still marked PENDING and re-checks their status
 against the gateway, updating the payment log + donation status (and
 firing the thank-you email) exactly like the normal callback flow does.
 
-Meant to run hourly via cron to catch transactions where the gateway's
-browser/webhook response never reached us (dropped callback, user closed
-browser mid-payment, etc.) and the record would otherwise sit as PENDING
-forever.
+Meant to run every 30 minutes via cron to catch transactions where the
+gateway's browser/webhook response never reached us (dropped callback,
+user closed browser mid-payment, etc.) and the record would otherwise
+sit as PENDING forever.
 
-Run manually:
+Run manually (uses the defaults below):
     python scripts/check_pending_transactions.py
 
-Crontab entry (adjust paths):
-    0 * * * * cd /path/to/project && /path/to/venv/bin/python scripts/check_pending_transactions.py >> logs/pending_check.log 2>&1
+Run manually with custom thresholds, e.g. to sweep everything regardless
+of age for a one-off check:
+    python scripts/check_pending_transactions.py --min-age-minutes 0 --max-age-hours 720
+
+Crontab entry (every 30 minutes, adjust paths):
+    */30 * * * * cd /var/www/sukruthakeralam-backend && /usr/bin/docker compose -f docker-compose.prod.yml exec -T backend python /backend/scripts/check_pending_transactions.py >> /var/www/sukruthakeralam-backend/logs/cron.log 2>&1
 """
 
+import argparse
 import asyncio
 import logging
 import os
@@ -37,15 +42,15 @@ from apps.payments.schema import SbiePayPaymentStatus  # noqa: E402
 from apps.payments.service import PaymentService  # noqa: E402
 from core.database.sqlalchamey.core import AsyncSessionLocal  # noqa: E402
 
-# --- Tuning knobs ---
+# --- Defaults (overridable via CLI flags — see --help) ---
 # Don't re-check transactions younger than this — give the normal callback
 # flow a chance to land first before we start hammering the gateway.
-MIN_AGE_MINUTES = 10
+DEFAULT_MIN_AGE_MINUTES = 10
 # Stop re-checking transactions older than this — beyond this age they're
 # effectively abandoned/stale and unlikely to resolve; avoids the job
 # growing unbounded and re-querying ancient rows forever.
-MAX_AGE_HOURS = 72
-# --------------------
+DEFAULT_MAX_AGE_HOURS = 72
+# -----------------------------------------------------------
 
 os.makedirs(project_root / "logs", exist_ok=True)
 logging.basicConfig(
@@ -81,10 +86,16 @@ def release_lock() -> None:
     LOCK_FILE.unlink(missing_ok=True)
 
 
-async def check_pending_transactions() -> None:
+async def check_pending_transactions(min_age_minutes: int, max_age_hours: int) -> None:
     now = datetime.now(timezone.utc)
-    newest_allowed = now - timedelta(minutes=MIN_AGE_MINUTES)
-    oldest_allowed = now - timedelta(hours=MAX_AGE_HOURS)
+    newest_allowed = now - timedelta(minutes=min_age_minutes)
+    oldest_allowed = now - timedelta(hours=max_age_hours)
+
+    logger.info(
+        f"Checking SBIePay pending transactions between "
+        f"{oldest_allowed.isoformat()} and {newest_allowed.isoformat()} "
+        f"(min_age_minutes={min_age_minutes}, max_age_hours={max_age_hours})"
+    )
 
     stats = {
         "checked": 0,
@@ -137,11 +148,43 @@ def _record_result(new_status: str, order_id: str, stats: dict) -> None:
         logger.info(f"[SBIePay] {order_id} -> still pending")
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Re-check pending SBIePay transactions against the gateway."
+    )
+    parser.add_argument(
+        "--min-age-minutes",
+        type=int,
+        default=DEFAULT_MIN_AGE_MINUTES,
+        help=(
+            "Skip transactions younger than this (minutes). Gives the normal "
+            f"callback a chance to land first. Default: {DEFAULT_MIN_AGE_MINUTES}"
+        ),
+    )
+    parser.add_argument(
+        "--max-age-hours",
+        type=int,
+        default=DEFAULT_MAX_AGE_HOURS,
+        help=(
+            "Skip transactions older than this (hours) — treated as abandoned. "
+            f"Default: {DEFAULT_MAX_AGE_HOURS}"
+        ),
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
+
     if not acquire_lock():
         return 0
     try:
-        asyncio.run(check_pending_transactions())
+        asyncio.run(
+            check_pending_transactions(
+                min_age_minutes=args.min_age_minutes,
+                max_age_hours=args.max_age_hours,
+            )
+        )
         return 0
     except Exception as e:
         logger.exception(f"Fatal error in pending transaction check: {e}")
