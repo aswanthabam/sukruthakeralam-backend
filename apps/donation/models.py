@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, Float, ForeignKey
+from sqlalchemy import Column, String, Boolean, Float, ForeignKey, Text
 from sqlalchemy.orm import relationship
 
 from apps.donation.schema import DonationStatus, FormG80SubmissionStatus
@@ -30,6 +30,8 @@ class Donation(AbstractSQLModel, TimestampsMixin, SoftDeleteMixin):
     payment_provider = Column(
         String(50), nullable=False, default="phonepe", server_default="phonepe"
     )
+    inspired_by = Column(String(50), nullable=True, index=True)  # facebook, instagram, news, community, groups, friend
+    inspired_by_friend_name = Column(String(100), nullable=True)  # Only used when inspired_by == 'friend'
 
     g80_certificate = relationship(
         "FormG80Submission",

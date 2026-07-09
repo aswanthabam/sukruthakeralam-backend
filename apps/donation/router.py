@@ -155,6 +155,7 @@ async def list_donations_endpoint(
     auth: "AuthDependency",
     status: str | None = None,
     search: str | None = None,
+    inspired_by: str | None = None,
     from_datetime: datetime | None = None,
     to_datetime: datetime | None = None,
 ) -> PaginatedResponse[DonationListResponse]:
@@ -163,6 +164,7 @@ async def list_donations_endpoint(
         from_datetime=from_datetime,
         to_datetime=to_datetime,
         search=search,
+        inspired_by=inspired_by,
         limit=pagination.limit,
         offset=pagination.offset,
     )
@@ -260,6 +262,8 @@ async def get_donation_details_endpoint(
         "g80_certificate_id": (
             donation.g80_certificate.id if donation.g80_certificate else None
         ),
+        "inspired_by": donation.inspired_by,
+        "inspired_by_friend_name": donation.inspired_by_friend_name,
         "payment_details": payment_details,
         "donation": donation,
     }
